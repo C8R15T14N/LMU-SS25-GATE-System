@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2013, 2020-2023 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2013, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -21,10 +21,10 @@ package de.tuclausthal.submissioninterface.servlets.view;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import de.tuclausthal.submissioninterface.persistence.datamodel.Participation;
 import de.tuclausthal.submissioninterface.persistence.datamodel.Student;
@@ -61,8 +61,7 @@ public class OverviewView extends HttpServlet {
 			out.println("Bitte nennen Sie Ihre Matrikelnummer: <input type=number required=\"required\" name=matrikelno id=matrikelno pattern=\"[0-9]+\" autocomplete=\"off\" size=15\"> <input type=submit value=\"speichern...\">");
 			out.println("</form></p><br>");
 		}
-		if (user instanceof Student) {
-			Student student = (Student) user;
+		if (user instanceof Student student) {
 			if (student.getStudiengang() == null) {
 				out.println("<p><form class=\"highlightborder mid\" action=\"" + Util.generateHTMLLink(AlterUser.class.getSimpleName(), response) + "\" method=post>");
 				out.println("Bitte nennen Sie Ihren Studiengang: <select required name=studiengang>");

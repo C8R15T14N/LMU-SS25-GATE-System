@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -21,10 +21,10 @@ package de.tuclausthal.submissioninterface.servlets.controller;
 import java.io.IOException;
 import java.util.Objects;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -56,13 +56,12 @@ public class DockerTestManager extends HttpServlet {
 		Session session = RequestAdapter.getSession(request);
 		TestDAOIf testDAOIf = DAOFactory.TestDAOIf(session);
 		Test tst = testDAOIf.getTest(Util.parseInteger(request.getParameter("testid"), 0));
-		if (tst == null || !(tst instanceof DockerTest)) {
+		if (tst == null || !(tst instanceof DockerTest test)) {
 			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 			request.setAttribute("title", "Test nicht gefunden");
 			getServletContext().getNamedDispatcher(MessageView.class.getSimpleName()).forward(request, response);
 			return;
 		}
-		DockerTest test = (DockerTest) tst;
 
 		ParticipationDAOIf participationDAO = DAOFactory.ParticipationDAOIf(session);
 		Participation participation = participationDAO.getParticipation(RequestAdapter.getUser(request), test.getTask().getTaskGroup().getLecture());
@@ -80,13 +79,12 @@ public class DockerTestManager extends HttpServlet {
 		Session session = RequestAdapter.getSession(request);
 		TestDAOIf testDAOIf = DAOFactory.TestDAOIf(session);
 		Test tst = testDAOIf.getTest(Util.parseInteger(request.getParameter("testid"), 0));
-		if (tst == null || !(tst instanceof DockerTest)) {
+		if (tst == null || !(tst instanceof DockerTest test)) {
 			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 			request.setAttribute("title", "Test nicht gefunden");
 			getServletContext().getNamedDispatcher(MessageView.class.getSimpleName()).forward(request, response);
 			return;
 		}
-		DockerTest test = (DockerTest) tst;
 
 		ParticipationDAOIf participationDAO = DAOFactory.ParticipationDAOIf(session);
 		Participation participation = participationDAO.getParticipation(RequestAdapter.getUser(request), test.getTask().getTaskGroup().getLecture());

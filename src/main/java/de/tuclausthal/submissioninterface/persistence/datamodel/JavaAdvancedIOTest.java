@@ -45,6 +45,9 @@ import de.tuclausthal.submissioninterface.testframework.tests.AbstractTest;
 public class JavaAdvancedIOTest extends Test {
 	private static final long serialVersionUID = 1L;
 
+	@OneToMany(mappedBy = "test", cascade = CascadeType.PERSIST)
+	@OnDelete(action = OnDeleteAction.CASCADE)
+	@OrderBy("teststepid asc")
 	@JacksonXmlElementWrapper(localName = "testSteps")
 	@JacksonXmlProperty(localName = "testStep")
 	@JsonManagedReference
@@ -52,16 +55,13 @@ public class JavaAdvancedIOTest extends Test {
 
 	@Override
 	@Transient
-	public AbstractTest getTestImpl() {
+	public AbstractTest<JavaAdvancedIOTest> getTestImpl() {
 		return new de.tuclausthal.submissioninterface.testframework.tests.impl.JavaAdvancedIOTest(this);
 	}
 
 	/**
 	 * @return the testSteps
 	 */
-	@OneToMany(mappedBy = "test", cascade = CascadeType.PERSIST)
-	@OnDelete(action = OnDeleteAction.CASCADE)
-	@OrderBy("teststepid asc")
 	public List<JavaAdvancedIOTestStep> getTestSteps() {
 		return testSteps;
 	}

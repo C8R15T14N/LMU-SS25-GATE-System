@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2014, 2017, 2020-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2014, 2017, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -48,9 +48,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.file.PathUtils;
@@ -130,12 +130,12 @@ public final class Util {
 
 	// based on java.net.URI::encode(String)
 	public static String encodeURLPathComponent(String path) {
-		int length = path.length();
+		final int length = path.length();
 		if (length == 0)
 			return path;
 
 		try {
-			String s = new URI(null, null, path, null).toString();
+			final String s = new URI(null, null, path, null).toString();
 
 			// Check whether we actually need to path encode the string
 			for (int i = 0;;) {
@@ -148,11 +148,12 @@ public final class Util {
 			ByteBuffer bb = null;
 			try {
 				bb = StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(s));
-			} catch (CharacterCodingException x) {
-				assert false;
+			} catch (CharacterCodingException ex) {
+				LOG.error("Could not UTF-8 encode string in encodeURLPathComponent.", ex);
+				return "";
 			}
 
-			StringBuilder sb = new StringBuilder();
+			final StringBuilder sb = new StringBuilder();
 			while (bb.hasRemaining()) {
 				int b = bb.get() & 0xff;
 				if (b >= 0x80) {
@@ -195,9 +196,9 @@ public final class Util {
 		if (message == null) {
 			return null;
 		}
-		StringBuilder result = new StringBuilder(message.length() + 50);
+		final StringBuilder result = new StringBuilder(message.length() + 50);
 		for (int i = 0; i < message.length(); ++i) {
-			char element = message.charAt(i);
+			final char element = message.charAt(i);
 			switch (element) {
 				case '<':
 					result.append("\\<");
@@ -247,18 +248,18 @@ public final class Util {
 
 	private static final void copyInputStreamAndClose(InputStream in, OutputStream out) throws IOException {
 		try {
-			byte[] buffer = new byte[8192];
+			final byte[] buffer = new byte[8192];
 			int len;
 			while ((len = in.read(buffer)) >= 0) {
 				out.write(buffer, 0, len);
 			}
 		} finally {
-			if (in instanceof ZipInputStream) {
-				((ZipInputStream) in).closeEntry();
+			if (in instanceof ZipInputStream zis) {
+				zis.closeEntry();
 			} else
 				in.close();
-			if (out instanceof ZipOutputStream) {
-				((ZipOutputStream) out).closeEntry();
+			if (out instanceof ZipOutputStream zos) {
+				zos.closeEntry();
 			} else {
 				out.close();
 			}
@@ -294,7 +295,7 @@ public final class Util {
 	}
 
 	public static List<String> listFilesAsRelativeStringList(final Path path) {
-		List<String> submittedFiles = new ArrayList<>();
+		final List<String> submittedFiles = new ArrayList<>();
 		try {
 			if (Files.exists(path) && !PathUtils.isEmptyDirectory(path)) {
 				listFilesAsRelativeStringList(submittedFiles, path, "");
@@ -307,7 +308,7 @@ public final class Util {
 	}
 
 	public static List<String> listFilesAsRelativeStringListSorted(final Path path) {
-		List<String> submittedFiles = listFilesAsRelativeStringList(path);
+		final List<String> submittedFiles = listFilesAsRelativeStringList(path);
 		Collections.sort(submittedFiles);
 		return submittedFiles;
 	}
@@ -325,7 +326,7 @@ public final class Util {
 	}
 
 	public static List<String> listFilesAsRelativeStringList(final Path path, final List<String> excludedFileNames) {
-		List<String> submittedFiles = new ArrayList<>();
+		final List<String> submittedFiles = new ArrayList<>();
 		try {
 			if (Files.exists(path) && !PathUtils.isEmptyDirectory(path)) {
 				listFilesAsRelativeStringList(submittedFiles, path, "", excludedFileNames);
@@ -467,14 +468,14 @@ public final class Util {
 		return ZonedDateTime.now(CLOCK).getYear() * 10;
 	}
 
-	public static int decreaseSemester(int semester) {
+	public static int decreaseSemester(final int semester) {
 		if (semester % 2 != 0) {
 			return semester - 1;
 		}
 		return semester - 10 + 1;
 	}
 
-	public static int increaseSemester(int semester) {
+	public static int increaseSemester(final int semester) {
 		if (semester % 2 == 0) {
 			return semester + 1;
 		}
@@ -509,7 +510,7 @@ public final class Util {
 	 * @param nullValue String to output if bool is null
 	 * @return a string representing the value of bool
 	 */
-	public static String boolToHTML(Boolean bool, String nullValue) {
+	public static String boolToHTML(final Boolean bool, final String nullValue) {
 		if (bool == null)
 			return nullValue;
 		return boolToHTML(bool.booleanValue());
@@ -520,7 +521,7 @@ public final class Util {
 	 * @param bool
 	 * @return a string representing the value of bool
 	 */
-	public static String boolToHTML(boolean bool) {
+	public static String boolToHTML(final boolean bool) {
 		if (bool)
 			return "<span class=green>ja</span>";
 		return "<span class=red>nein</span>";
@@ -539,15 +540,15 @@ public final class Util {
 		return null;
 	}
 
-	public static String showPoints(int maxPoints) {
+	public static String showPoints(final int maxPoints) {
 		return NumberFormat.getInstance(Locale.GERMANY).format(maxPoints / 100.0);
 	}
 
-	public static int convertToPoints(String parameter) {
+	public static int convertToPoints(final String parameter) {
 		try {
-			int points = ((Double) (Double.parseDouble(parameter.replace(",", ".")) * 100.0)).intValue();
+			final int points = ((Double) (Double.parseDouble(parameter.replace(",", ".")) * 100.0)).intValue();
 			if (points < 0) {
-				points = 0;
+				return 0;
 			}
 			return points;
 		} catch (NumberFormatException e) {
@@ -556,7 +557,7 @@ public final class Util {
 	}
 
 	public static int convertToPoints(String parameter, int minPointStep) {
-		int points = convertToPoints(parameter);
+		final int points = convertToPoints(parameter);
 		return ensureMinPointStepMultiples(points, minPointStep);
 	}
 
@@ -567,14 +568,13 @@ public final class Util {
 		return (points / minPointStep) * minPointStep;
 	}
 
-	public static String getPointsCSSClass(Points points) {
-		String pointsClass = "";
+	public static String getPointsCSSClass(final Points points) {
 		if (points.getPointStatus() == PointStatus.ABGENOMMEN_FAILED.ordinal()) {
-			pointsClass = " abgenfailed";
+			return " abgenfailed";
 		} else if (points.getDuplicate() != null) {
-			pointsClass = " dupe";
+			return " dupe";
 		}
-		return pointsClass;
+		return "";
 	}
 
 	public static String getUploadFileName(Part part) {

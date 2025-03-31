@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2021-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -26,14 +26,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 
 import com.opencsv.CSVWriter;
+import com.opencsv.ICSVWriter;
 
 import de.tuclausthal.submissioninterface.persistence.dao.DAOFactory;
 import de.tuclausthal.submissioninterface.persistence.dao.PointGivenDAOIf;
@@ -65,7 +66,7 @@ public class ShowTaskTutorCSVView extends HttpServlet {
 
 		final String[] empty = new String[0];
 		final String[] fixedHeader = { "E-Mail-Adresse", "Interner Kommentar", "Externer Kommentar", "Abgenommen (0=nicht abgenommen|1=abgenommen|2=nicht bestanden)" };
-		try (CSVWriter writer = new CSVWriter(new PrintWriter(response.getWriter()), ';', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END)) {
+		try (CSVWriter writer = new CSVWriter(new PrintWriter(response.getWriter()), ';', ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER, ICSVWriter.DEFAULT_LINE_END)) {
 			List<String> header = new ArrayList<>(Arrays.asList(fixedHeader));
 			if (task.getPointCategories().isEmpty()) {
 				header.add("Punkte");

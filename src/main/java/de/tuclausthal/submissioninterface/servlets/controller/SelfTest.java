@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2021-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,18 +35,17 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Stream;
 
-import javax.servlet.FilterRegistration;
-import javax.servlet.ServletException;
-import javax.servlet.SessionTrackingMode;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.stream.JsonParsingException;
 import jakarta.persistence.PersistenceException;
+import jakarta.servlet.FilterRegistration;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.SessionTrackingMode;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 import org.slf4j.Logger;
@@ -160,6 +160,8 @@ public class SelfTest extends HttpServlet {
 			testresults.add(new TestResult("Testframework-Listener läuft.", false));
 			LOG.error("Could not access LocalExecutor.", e);
 		}
+		testresults.add(new TestResult("TMP-Verzeichnis ist beschreibbar.", Util.escapeHTML(Configuration.getInstance().getLecturesPath().toString()), checkTemp()));
+		testresults.add(new TestResult("Dateien mit Umlauten können erstellt werden.", Util.escapeHTML(Configuration.getInstance().getLecturesPath().toString()), checkSpecialFilename()));
 		testresults.add(new TestResult("Daten-Verzeichnis existiert und ist lesbar.", Util.escapeHTML(Configuration.getInstance().getDataPath().toString()), checkDataDir()));
 		testresults.add(new TestResult("Daten-Verzeichnis ist nicht beschreibbar (erhöht die Sicherheit).", !Files.isWritable(Configuration.getInstance().getDataPath())));
 		testresults.add(new TestResult("Parent vom Daten-Verzeichnis ist nicht beschreibbar (erhöht die Sicherheit).", !Files.isWritable(Configuration.getInstance().getDataPath().getParent())));
@@ -202,7 +204,7 @@ public class SelfTest extends HttpServlet {
 		getServletContext().getNamedDispatcher(SelfTestView.class.getSimpleName()).forward(request, response);
 	}
 
-	private boolean checkDataDir() {
+	private static boolean checkDataDir() {
 		final Path dataDir = Configuration.getInstance().getDataPath();
 		if (!Files.isDirectory(dataDir) || !Files.isReadable(dataDir)) {
 			return false;
@@ -216,7 +218,39 @@ public class SelfTest extends HttpServlet {
 		return true;
 	}
 
-	private boolean checkLecturesDir() {
+	private static boolean checkTemp() {
+		try {
+			final Path testFile = Files.createTempFile("sometext", ".tmp");
+			Files.delete(testFile);
+		} catch (IOException e) {
+			LOG.error("Cannot create tempfile", e);
+			return false;
+		}
+		final Path tmpPath = Util.createTemporaryDirectory("test");
+		if (tmpPath == null) {
+			LOG.error("Could not create temporary directory");
+			return false;
+		}
+		if (Files.notExists(tmpPath)) {
+			LOG.error("Created directory does not exist");
+			return false;
+		}
+		Util.recursiveDelete(tmpPath);
+		return true;
+	}
+
+	private static boolean checkSpecialFilename() {
+		try {
+			final Path testFile = Files.createTempFile("ÜÜmlaut", ".tmp");
+			Files.delete(testFile);
+		} catch (IOException | InvalidPathException e) {
+			LOG.error("Cannot create filenames containing umlauts, (InvalidPathException: LANG=*.UTF8 or LANG=C.UTF8 set?)", e);
+			return false;
+		}
+		return true;
+	}
+
+	private static boolean checkLecturesDir() {
 		final Path lecturesDir = Configuration.getInstance().getLecturesPath();
 		if (!Files.isDirectory(lecturesDir) || !Files.isReadable(lecturesDir) || !Files.isWritable(lecturesDir)) {
 			return false;
@@ -237,7 +271,7 @@ public class SelfTest extends HttpServlet {
 		return true;
 	}
 
-	private void checkRequiredFilesInDataDir(List<TestResult> testresults) {
+	private static void checkRequiredFilesInDataDir(List<TestResult> testresults) {
 		String[] filesToCheck = { JavaFunctionTest.SECURITYMANAGER_JAR, JavaJUnitTest.JUNIT_JAR, PlaggieAdapter.CONFIG_FILE_NAME };
 		for (String filename : filesToCheck) {
 			final Path file = Configuration.getInstance().getDataPath().resolve(filename);
@@ -245,7 +279,7 @@ public class SelfTest extends HttpServlet {
 		}
 	}
 
-	protected void testJavaTests(List<TestResult> testresults) {
+	private static void testJavaTests(List<TestResult> testresults) {
 		final Path tempDir = Util.createTemporaryDirectory("javatests");
 		if (tempDir == null) {
 			testresults.add(new TestResult("Java-Tests erfolgreich.", "Konnte kein temporäres Verzeichnis erstellen.", false));
@@ -319,10 +353,10 @@ public class SelfTest extends HttpServlet {
 			JsonObject object = null;
 			try (JsonReader jsonReader = Json.createReader(new StringReader(result.getTestOutput()))) {
 				object = jsonReader.readObject();
+				testresults.add(new TestResult("JavaAdvancedIOTest erkennt erfolgreich Timeout.", Util.escapeHTML(result.getTestOutput()), !result.isTestPassed() && object.containsKey("time-exceeded") && object.getBoolean("time-exceeded")));
 			} catch (JsonParsingException ex) {
 				testresults.add(new TestResult("JavaAdvancedIOTest-Ausgabe ist kein gültiges JSON.", Util.escapeHTML(result.getTestOutput()), false));
 			}
-			testresults.add(new TestResult("JavaAdvancedIOTest erkennt erfolgreich Timeout.", Util.escapeHTML(result.getTestOutput()), !result.isTestPassed() && object.containsKey("time-exceeded") && object.getBoolean("time-exceeded")));
 
 			if (functionTestGenerallyOK) {
 				javaAdvancedIOTest.getTestSteps().clear();
@@ -333,15 +367,16 @@ public class SelfTest extends HttpServlet {
 				javaFunctionTest.performTest(Configuration.getInstance().getDataPath(), tempDir, result);
 				try (JsonReader jsonReader = Json.createReader(new StringReader(result.getTestOutput()))) {
 					object = jsonReader.readObject();
+
+					String output = object.getString("stdout", "STDOUT empty");
+					if (output.contains("----start here----") && output.contains("----to here----")) {
+						int start = output.indexOf("----start here----\n") + "----start here----\n".length();
+						output = output.substring(start, output.length() - "\n----to here----\n".length());
+					}
+					testresults.add(new TestResult("Java-Version des JavaAdvancedIOTests:", Util.escapeHTML(output), null));
 				} catch (JsonParsingException ex) {
 					testresults.add(new TestResult("JavaAdvancedIOTest-Ausgabe ist kein gültiges JSON.", Util.escapeHTML(result.getTestOutput()), false));
 				}
-				String output = object.getString("stdout", "STDOUT empty");
-				if (output.contains("----start here----") && output.contains("----to here----")) {
-					int start = output.indexOf("----start here----\n") + "----start here----\n".length();
-					output = output.substring(start, output.length() - "\n----to here----\n".length());
-				}
-				testresults.add(new TestResult("Java-Version des JavaAdvancedIOTests:", Util.escapeHTML(output), null));
 			}
 		} catch (Exception e) {
 			testresults.add(new TestResult("JavaAdvancedIOTest erfolgreich.", Util.escapeHTML(e.getMessage()), false));
@@ -354,21 +389,23 @@ public class SelfTest extends HttpServlet {
 	}
 
 	public static class TestResult {
-		public String test;
-		public String details;
-		public Boolean result;
+		final public String test;
+		final public String details;
+		final public Boolean result;
 
-		public TestResult(String test) {
+		private TestResult(String test) {
 			this.test = test;
 			this.result = true;
+			this.details = "";
 		}
 
-		public TestResult(String test, Boolean result) {
+		private TestResult(String test, Boolean result) {
 			this.test = test;
 			this.result = result;
+			this.details = "";
 		}
 
-		public TestResult(String test, String details, Boolean result) {
+		private TestResult(String test, String details, Boolean result) {
 			this.test = test;
 			this.details = details;
 			this.result = result;

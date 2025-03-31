@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011, 2013, 2020-2022 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2011, 2013, 2020-2022, 2024-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -24,14 +24,15 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 
 import com.opencsv.CSVWriter;
+import com.opencsv.ICSVWriter;
 
 import de.tuclausthal.submissioninterface.persistence.dao.DAOFactory;
 import de.tuclausthal.submissioninterface.persistence.dao.SubmissionDAOIf;
@@ -72,7 +73,7 @@ public class ShowLectureTutorCSVView extends HttpServlet {
 		List<TaskGroup> taskGroupList = lecture.getTaskGroups();
 
 		final String[] empty = new String[0];
-		try (CSVWriter writer = new CSVWriter(new PrintWriter(response.getWriter()), ';', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END)) {
+		try (CSVWriter writer = new CSVWriter(new PrintWriter(response.getWriter()), ';', ICSVWriter.DEFAULT_QUOTE_CHARACTER, ICSVWriter.DEFAULT_ESCAPE_CHARACTER, ICSVWriter.DEFAULT_LINE_END)) {
 			List<String> header = new ArrayList<>();
 			if (showMatNo) {
 				header.add("MatrikelNo");
@@ -102,11 +103,11 @@ public class ShowLectureTutorCSVView extends HttpServlet {
 				}
 				String[] line = new String[header.size()];
 				int column = 0;
-				if (lectureParticipation.getUser() instanceof Student) {
+				if (lectureParticipation.getUser() instanceof Student student) {
 					if (showMatNo) {
-						line[column++] = String.valueOf(((Student) lectureParticipation.getUser()).getMatrikelno());
+						line[column++] = String.valueOf(student.getMatrikelno());
 					}
-					line[column++] = ((Student) lectureParticipation.getUser()).getStudiengang();
+					line[column++] = student.getStudiengang();
 				} else {
 					if (showMatNo) {
 						line[column++] = "n/a;";

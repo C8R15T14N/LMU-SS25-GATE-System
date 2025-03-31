@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2013, 2020-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2013, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -24,10 +24,10 @@ import java.time.ZonedDateTime;
 import java.util.Iterator;
 import java.util.Map;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 
@@ -252,8 +252,8 @@ public class ShowLectureTutorView extends HttpServlet {
 				Participation thisParticipation = participationIterator.next();
 				out.println("<tr>");
 				if (showMatNo) {
-					if (thisParticipation.getUser() instanceof Student) {
-						out.println("<td>" + ((Student) thisParticipation.getUser()).getMatrikelno() + "</td>");
+					if (thisParticipation.getUser() instanceof Student student) {
+						out.println("<td>" + student.getMatrikelno() + "</td>");
 					} else {
 						out.println("<td>n/a</td>");
 					}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2021-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -21,12 +21,6 @@ package de.tuclausthal.submissioninterface.servlets.controller;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
@@ -34,6 +28,10 @@ import jakarta.persistence.LockModeType;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -67,13 +65,12 @@ public class ChecklistTestResponse extends HttpServlet {
 		Session session = RequestAdapter.getSession(request);
 		TestDAOIf testDAOIf = DAOFactory.TestDAOIf(session);
 		Test tst = testDAOIf.getTest(Util.parseInteger(request.getParameter("testid"), 0));
-		if (tst == null || !(tst instanceof ChecklistTest)) {
+		if (tst == null || !(tst instanceof ChecklistTest test)) {
 			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 			request.setAttribute("title", "Test nicht gefunden");
 			getServletContext().getNamedDispatcher(MessageView.class.getSimpleName()).forward(request, response);
 			return;
 		}
-		ChecklistTest test = (ChecklistTest) tst;
 
 		ParticipationDAOIf participationDAO = DAOFactory.ParticipationDAOIf(session);
 		Participation participation = participationDAO.getParticipation(RequestAdapter.getUser(request), test.getTask().getTaskGroup().getLecture());
@@ -103,7 +100,7 @@ public class ChecklistTestResponse extends HttpServlet {
 		long now = Instant.now().getEpochSecond();
 		jsonObjectBuilder.add("secondsneeded", now - logEntry.getTimeStamp().toInstant().getEpochSecond());
 		jsonObjectBuilder.add("lastupdated", now);
-		List<Integer> checkedByStudent = test.getCheckItems().stream().filter(checkItem -> request.getParameter("checkitem" + checkItem.getCheckitemid()) != null).map(checkitem -> checkitem.getCheckitemid()).collect(Collectors.toList());
+		final List<Integer> checkedByStudent = test.getCheckItems().stream().filter(checkItem -> request.getParameter("checkitem" + checkItem.getCheckitemid()) != null).map(checkitem -> checkitem.getCheckitemid()).toList();
 		jsonObjectBuilder.add("checked", Json.createArrayBuilder(checkedByStudent));
 		logEntry.setAdditionalData(jsonObjectBuilder.build().toString());
 		logEntry.setResult(test.getCheckItems().stream().allMatch(checkItem -> request.getParameter("checkitem" + checkItem.getCheckitemid()) != null));

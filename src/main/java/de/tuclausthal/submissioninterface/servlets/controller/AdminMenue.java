@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012, 2020-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2012, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -34,12 +34,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.MultipartConfig;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -124,12 +124,16 @@ public class AdminMenue extends HttpServlet {
 				response.sendError(HttpServletResponse.SC_NOT_FOUND, "lecture not found");
 				return;
 			}
+			final Path temp = Files.createTempFile("export", ".xml");
 			try {
+				LectureImportExportHelper.exportLecture(session, lecture, Util.constructPath(Configuration.getInstance().getDataPath(), lecture), temp);
 				ShowFile.setContentTypeBasedonFilenameExtension(response, "Export " + lecture.getName() + " (" + lecture.getReadableSemester() + ").xml", true);
-				LectureImportExportHelper.exportLecture(session, lecture, Util.constructPath(Configuration.getInstance().getDataPath(), lecture), response.getOutputStream());
+				Files.copy(temp, response.getOutputStream());
 			} catch (final JsonProcessingException e) {
 				LOG.warn("Could not export lecture " + lecture.getId(), e);
-				response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not export lecture, see details in server log.");
+				throw e;
+			} finally {
+				Files.delete(temp);
 			}
 		} else { // list all lectures
 			request.setAttribute("lectures", DAOFactory.LectureDAOIf(session).getLectures());
@@ -379,7 +383,7 @@ public class AdminMenue extends HttpServlet {
 		final TaskDAOIf taskDAO = DAOFactory.TaskDAOIf(session);
 		final SubmissionDAOIf submissionDAO = DAOFactory.SubmissionDAOIf(session);
 
-		final List<String> taskPaths = Stream.of(TaskPath.values()).map(tp -> tp.getPathComponent()).collect(Collectors.toList());
+		final List<String> taskPaths = Stream.of(TaskPath.values()).map(tp -> tp.getPathComponent()).toList();
 		try (DirectoryStream<Path> lecturesPathDirectoryStream = Files.newDirectoryStream(lecturesPath)) {
 			for (final Path lecturePath : lecturesPathDirectoryStream) {
 				if (lectureDAO.getLecture(Util.parseInteger(lecturePath.getFileName().toString(), 0)) == null) {

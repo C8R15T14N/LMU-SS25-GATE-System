@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2014, 2017, 2020-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2014, 2017, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -38,16 +38,15 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.MultipartConfig;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
-
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 import org.hibernate.LockMode;
 import org.hibernate.Session;
@@ -349,20 +348,29 @@ public class SubmitSolution extends HttpServlet {
 					}
 				}
 			} else {
+				boolean error = false;
 				for (int partnerID : partnerIDs) {
 					Participation partnerParticipation = participationDAO.getParticipation(partnerID);
-					session.lock(partnerParticipation, LockMode.PESSIMISTIC_WRITE); // creating submissions is serialized by locking the participation, see above
-					if (submission.getSubmitters().size() < task.getMaxSubmitters() && partnerParticipation != null && partnerParticipation.getRoleType().equals(ParticipationRole.NORMAL) && partnerParticipation.getLecture().getId() == task.getTaskGroup().getLecture().getId() && ((task.isAllowSubmittersAcrossGroups() && (partnerParticipation.getGroup() == null || !partnerParticipation.getGroup().isSubmissionGroup())) || (!task.isAllowSubmittersAcrossGroups() && partnerParticipation.getGroup() != null && studentParticipation.getGroup() != null && partnerParticipation.getGroup().getGid() == studentParticipation.getGroup().getGid())) && submissionDAO.getSubmission(task, partnerParticipation.getUser()) == null) {
-						submission.getSubmitters().add(partnerParticipation);
-					} else {
-						tx.rollback();
-						template.printTemplateHeader("Ungültige Anfrage", task);
-						PrintWriter out = response.getWriter();
-						out.println("<div class=mid>Ein ausgewählter Studierender hat bereits eine eigene Abgabe initiiert, Sie haben bereits die maximale Anzahl von Studierenden überschritten oder einen nicht verfügbaren Studierenden ausgewählt.</div>");
-						out.println("<p><div class=mid><a href=\"javascript:window.history.back();\">zurück zur vorherigen Seite</a></div>");
-						template.printTemplateFooter();
-						return;
+					if (partnerParticipation == null) {
+						error = true;
+						break;
 					}
+					session.lock(partnerParticipation, LockMode.PESSIMISTIC_WRITE); // creating submissions is serialized by locking the participation, see above
+					if (submission.getSubmitters().size() < task.getMaxSubmitters() && partnerParticipation.getRoleType().equals(ParticipationRole.NORMAL) && partnerParticipation.getLecture().getId() == task.getTaskGroup().getLecture().getId() && ((task.isAllowSubmittersAcrossGroups() && (partnerParticipation.getGroup() == null || !partnerParticipation.getGroup().isSubmissionGroup())) || (!task.isAllowSubmittersAcrossGroups() && partnerParticipation.getGroup() != null && studentParticipation.getGroup() != null && partnerParticipation.getGroup().getGid() == studentParticipation.getGroup().getGid())) && submissionDAO.getSubmission(task, partnerParticipation.getUser()) == null) {
+						submission.getSubmitters().add(partnerParticipation);
+						continue;
+					}
+					error = true;
+					break;
+				}
+				if (error) {
+					tx.rollback();
+					template.printTemplateHeader("Ungültige Anfrage", task);
+					PrintWriter out = response.getWriter();
+					out.println("<div class=mid>Ein ausgewählter Studierender hat bereits eine eigene Abgabe initiiert, Sie haben bereits die maximale Anzahl von Studierenden überschritten oder einen nicht verfügbaren Studierenden ausgewählt.</div>");
+					out.println("<p><div class=mid><a href=\"javascript:window.history.back();\">zurück zur vorherigen Seite</a></div>");
+					template.printTemplateFooter();
+					return;
 				}
 			}
 		}
@@ -486,7 +494,7 @@ public class SubmitSolution extends HttpServlet {
 				++i;
 			}
 			Collections.sort(resultIDs);
-			List<String> results = resultIDs.stream().map(String::valueOf).collect(Collectors.toList());
+			final List<String> results = resultIDs.stream().map(String::valueOf).toList();
 			DAOFactory.ResultDAOIf(session).createResults(submission, results);
 
 			DAOFactory.PointsDAOIf(session).createMCPoints(allCorrect ? task.getMaxPoints() : 0, submission, "", task.getTaskGroup().getLecture().isRequiresAbhnahme() ? PointStatus.NICHT_ABGENOMMEN : PointStatus.ABGENOMMEN);

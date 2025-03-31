@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2010, 2013, 2015, 2017, 2020-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2010, 2013, 2015, 2017, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import de.tuclausthal.submissioninterface.template.Template;
 
@@ -73,8 +73,8 @@ public class Configuration {
 
 	static {
 		Properties versionProperties = new Properties();
-		try {
-			versionProperties.load(Configuration.class.getClassLoader().getResourceAsStream("git.properties"));
+		try (var propertiesFile = Configuration.class.getClassLoader().getResourceAsStream("git.properties")) {
+			versionProperties.load(propertiesFile);
 			VERSION_INFO = versionProperties.getProperty("git.commit.id.abbrev") + " (" + versionProperties.getProperty("git.build.time") + ")";
 		} catch (IOException | NullPointerException ex) {
 			VERSION_INFO = "unknown";

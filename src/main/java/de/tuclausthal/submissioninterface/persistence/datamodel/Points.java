@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011, 2017, 2020-2023 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2011, 2017, 2020-2024 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -32,9 +32,14 @@ public class Points implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private Integer points;
+	@Column(columnDefinition = "TINYINT")
 	private Integer pointStatus; // 0 = ungraded, 1 = nicht abgenommen, 2 = abnahme nicht bestanden, 3 = abgenommen
+	@ManyToOne
+	@JoinColumn(name = "issuedby_id")
 	private Participation issuedBy;
+	@Column(length = 65536)
 	private String publicComment;
+	@Column(length = 65536)
 	private String internalComment;
 	private Integer duplicate;
 
@@ -67,8 +72,6 @@ public class Points implements Serializable {
 	/**
 	 * @return the issuedBy
 	 */
-	@ManyToOne
-	@JoinColumn(name = "issuedby_id")
 	public Participation getIssuedBy() {
 		return issuedBy;
 	}
@@ -83,7 +86,6 @@ public class Points implements Serializable {
 	/**
 	 * @return the comment
 	 */
-	@Column(length = 65536)
 	public String getPublicComment() {
 		return publicComment;
 	}
@@ -106,7 +108,6 @@ public class Points implements Serializable {
 	/**
 	 * @return the internalComment
 	 */
-	@Column(length = 65536)
 	public String getInternalComment() {
 		return internalComment;
 	}
@@ -157,7 +158,6 @@ public class Points implements Serializable {
 	/**
 	 * @return the pointStatus
 	 */
-	@Column(columnDefinition = "TINYINT")
 	public Integer getPointStatus() {
 		return pointStatus;
 	}
@@ -182,7 +182,7 @@ public class Points implements Serializable {
 		return PointStatus.values()[pointStatus];
 	}
 
-	public static enum PointStatus {
+	public enum PointStatus {
 		NICHT_BEWERTET, NICHT_ABGENOMMEN, ABGENOMMEN_FAILED, ABGENOMMEN
 	}
 

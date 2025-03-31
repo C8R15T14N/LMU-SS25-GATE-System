@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012, 2017, 2020-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2009-2012, 2017, 2020-2025 Sven Strickroth <email@cs-ware.de>
  *
  * This file is part of the GATE.
  *
@@ -25,12 +25,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import jakarta.mail.internet.MimeUtility;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.hibernate.Session;
 
@@ -119,7 +118,7 @@ public class ShowFile extends HttpServlet {
 		getServletContext().getNamedDispatcher(MessageView.class.getSimpleName()).forward(request, response);
 	}
 
-	private boolean isPlainTextFile(String lowercaseFilename) {
+	private static boolean isPlainTextFile(String lowercaseFilename) {
 		for (String extension : plainTextFiles) {
 			if (lowercaseFilename.endsWith("." + extension)) {
 				return true;
@@ -129,10 +128,8 @@ public class ShowFile extends HttpServlet {
 	}
 
 	public static boolean isInlineAble(String lowercaseFilename) {
-		for (String extension : plainTextFiles) {
-			if (lowercaseFilename.endsWith("." + extension)) {
-				return true;
-			}
+		if (isPlainTextFile(lowercaseFilename)) {
+			return true;
 		}
 		for (String extension : inlineFiles) {
 			if (lowercaseFilename.endsWith("." + extension)) {
