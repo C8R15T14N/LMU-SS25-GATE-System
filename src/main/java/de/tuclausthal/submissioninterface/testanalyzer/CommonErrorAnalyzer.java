@@ -36,6 +36,7 @@ import de.tuclausthal.submissioninterface.persistence.datamodel.JUnitTest;
 import de.tuclausthal.submissioninterface.persistence.datamodel.JavaAdvancedIOTest;
 import de.tuclausthal.submissioninterface.persistence.datamodel.Test;
 import de.tuclausthal.submissioninterface.persistence.datamodel.TestResult;
+import de.tuclausthal.submissioninterface.persistence.datamodel.DockerTest;
 
 public class CommonErrorAnalyzer {
 	//from Literatur
@@ -60,6 +61,9 @@ public class CommonErrorAnalyzer {
 			groupJavaIOTestResults((JavaAdvancedIOTest) test, testResult);
 		} else if (test instanceof JUnitTest) {
 			groupJUnitTestResults((JUnitTest) test, testResult);
+		}
+		else if (test instanceof DockerTest) {
+			groupDockerTestResults((DockerTest) test, testResult);
 		}
 	}
 
@@ -274,4 +278,29 @@ public class CommonErrorAnalyzer {
 		}
 		return foundErrorGroup;
 	}
+
+	private void groupDockerTestResults(final DockerTest test, final TestResult testResult) {
+		if (testResult.getPassedTest()) {
+			return;
+		}
+
+		JsonObject testOutputJson = Json.createReader(new StringReader(testResult.getTestOutput())).readObject();
+		String stderr = testOutputJson.containsKey("stderr") ? testOutputJson.getString("stderr") : "";
+
+		String keyStr = "";
+
+		// Optional: zusätzliche Hinweise sammeln
+		if (testOutputJson.containsKey("exitCode")) {
+			keyStr += "ExitCode: " + testOutputJson.getInt("exitCode") + " ";
+		}
+		if (testOutputJson.containsKey("time-exceeded") && testOutputJson.getBoolean("time-exceeded")) {
+			keyStr += "Timeout ";
+		}
+		if (testOutputJson.containsKey("missing-tests")) {
+			keyStr += "Missing tests ";
+		}
+
+		groupTestResultToCommonErrors(testResult, stderr, keyStr);
+	}
+
 }
