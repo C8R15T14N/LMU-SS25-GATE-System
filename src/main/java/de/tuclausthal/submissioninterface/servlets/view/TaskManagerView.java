@@ -52,6 +52,7 @@ import de.tuclausthal.submissioninterface.servlets.controller.DockerTestManager;
 import de.tuclausthal.submissioninterface.servlets.controller.DownloadModelSolutionFile;
 import de.tuclausthal.submissioninterface.servlets.controller.DownloadTaskFile;
 import de.tuclausthal.submissioninterface.servlets.controller.DupeCheck;
+import de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager;
 import de.tuclausthal.submissioninterface.servlets.controller.JavaAdvancedIOTestManager;
 import de.tuclausthal.submissioninterface.servlets.controller.PerformTest;
 import de.tuclausthal.submissioninterface.servlets.controller.ShowLecture;
@@ -478,6 +479,9 @@ public class TaskManagerView extends HttpServlet {
 						if (test instanceof JavaAdvancedIOTest adiot) {
 							out.println("Bestehend aus " + adiot.getTestSteps().size() + " Schritten<br>");
 							out.println("<a href=\"" + Util.generateHTMLLink(JavaAdvancedIOTestManager.class.getSimpleName() + "?testid=" + test.getId(), response) + "\">Test bearbeiten</a><br>");
+						} else if (test instanceof HaskellRuntimeTest hrt) {
+							out.println("Bestehend aus " + hrt.getTestSteps().size() + " Schritten<br>");
+							out.println("<a href=\"" + Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId(), response) + "\">Test bearbeiten</a><br>");
 						} else if (test instanceof DockerTest dt) {
 							out.println("Bestehend aus " + dt.getTestSteps().size() + " Schritten<br>");
 							out.println("<a href=\"" + Util.generateHTMLLink(DockerTestManager.class.getSimpleName() + "?testid=" + test.getId(), response) + "\">Test bearbeiten</a><br>");
