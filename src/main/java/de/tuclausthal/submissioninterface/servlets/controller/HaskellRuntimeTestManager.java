@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.Serial;
 import java.io.Writer;
 import java.lang.invoke.MethodHandles;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -99,7 +101,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			// TODO@CHW what happens if no model solution is uploaded?
 
 			try {
-				SubprocessResult res = evaluateWithGhci(new String[] { "hashable", "QuickCheck" }, new String[] { "Data.Hashable", "Test.QuickCheck" }, true, new String[] { ":browse", "hash [1,2,3]" }, test.getTask());
+				SubprocessResult res = evaluateWithGhci(new String[] { "hashable", "QuickCheck" }, new String[] { "Data.Hashable", "Test.QuickCheck" }, true, new String[] { ":browse", "hash [1,2,3]" }, test.getTask(), true);
 				LOG.info("STDOUT IS {}", res.stdOut());
 				LOG.info("STDERR IS {}", res.stdErr());
 				LOG.info("EXIT CODE IS {}", res.exitCode());
@@ -111,7 +113,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				// send redirect to HRTManager
 				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
 			} catch (IOException e) {
-				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId() + "&getidentifiererror=" + e.getMessage(), response));
+				String errorMessage = URLEncoder.encode(Util.escapeHTML(e.getMessage()), StandardCharsets.UTF_8);
+				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId() + "&getidentifiererror=" + errorMessage, response));
 			}
 		} else if ("generateNewTestSteps".equals(request.getParameter("action"))) {
 			int numberOfTestSteps = Util.parseInteger(request.getParameter("numberOfTestSteps"), 0);
@@ -160,7 +163,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	 * @param task Task, for which the testcases should be generated based on the model solution
 	 * @return result of the subprocess
 	 */
-	private SubprocessResult evaluateWithGhci(String[] packagesToEnable, String[] modulesToImport, boolean loadModelSolution, String[] expressionsToEvaluate, Task task) throws IOException {
+	private SubprocessResult evaluateWithGhci(String[] packagesToEnable, String[] modulesToImport, boolean loadModelSolution, String[] expressionsToEvaluate, Task task, boolean throwIOExceptionOnNonZeroExitCode) throws IOException {
 		final Path taskPath = Util.constructPath(Configuration.getInstance().getDataPath(), task);
 		final Path modelSolutionPath = taskPath.resolve(TaskPath.MODELSOLUTIONFILES.getPathComponent());
 		final int safeDockerTimeout = 30;
@@ -255,6 +258,16 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 			String stdOut = outputGrabber.getStdOutBuffer().toString();
 			String stdErr = outputGrabber.getStdErrBuffer().toString();
+
+			if (throwIOExceptionOnNonZeroExitCode) {
+				if (exitCode == 23) {
+					throw new IOException("Running haskell testcase generator timed out (Timeout: " + safeDockerTimeout + "s)");
+				} else if (exitCode == 24) {
+					throw new IOException("Running haskell testcase generator failed (Out of memory)");
+				} else if (exitCode != 0) {
+					throw new IOException("Running haskell testcase generator failed with exit code " + exitCode + ". Output on stderr: " + stdErr);
+				}
+			}
 
 			return new SubprocessResult(stdOut, stdErr, exitCode, aborted);
 		} finally {

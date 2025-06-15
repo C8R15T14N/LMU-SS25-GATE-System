@@ -22,6 +22,8 @@ package de.tuclausthal.submissioninterface.servlets.view;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serial;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -96,7 +98,8 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 
 		out.println("<h2>Benutzerdefinierte Haskell Funktionen und Datentypen der Musterlösung</h2>");
 		if (request.getParameter("getidentifiererror") != null) {
-			out.println("<p style=\"color: red\">Beim Analysieren der Musterlösung ist ein Fehler aufgetreten: " + request.getParameter("getidentifiererror") + "</p>");
+			String errorMessage = URLDecoder.decode(request.getParameter("getidentifiererror"), StandardCharsets.UTF_8);
+			out.println("<p style=\"color: red\">Beim Analysieren der Musterlösung ist ein Fehler aufgetreten: " + errorMessage + "</p>");
 		}
 		out.println("<form action=\"" + Util.generateHTMLLink("?", response) + "\" method=post id=getHaskellIdentifiersForm>");
 		out.println("<input type=hidden name=testid value=\"" + test.getId() + "\">");
