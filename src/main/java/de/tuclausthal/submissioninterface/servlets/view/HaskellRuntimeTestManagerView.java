@@ -95,10 +95,11 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		out.println("<hr>");
 
 		out.println("<h2>Benutzerdefinierte Haskell Funktionen und Datentypen der Musterlösung</h2>");
-		out.println("<form action=\"" + Util.generateHTMLLink("?", response) + "\" method=post>");
+		out.println("<form action=\"" + Util.generateHTMLLink("?", response) + "\" method=post id=getHaskellIdentifiersForm>");
 		out.println("<input type=hidden name=testid value=\"" + test.getId() + "\">");
 		out.println("<input type=hidden name=action value=getHaskellIdentifiers>");
-		out.println("<input type=submit value=\"Musterlösung analysieren\">");
+		out.println("<input type=button value=\"Musterlösung analysieren\" onclick=\"this.disabled=true; document.getElementById('getHaskellIdentifiersIsRunning').style.display='block'; document.getElementById('getHaskellIdentifiersForm').submit();\">");
+		out.println("<div id=\"getHaskellIdentifiersIsRunning\" style=\"display: none;\">Bitte warten...</div>\n");
 		out.println("</form>");
 
 		out.println("<h2>Neue Testschritte automatisch generieren</h2>");
