@@ -95,6 +95,9 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		out.println("<hr>");
 
 		out.println("<h2>Benutzerdefinierte Haskell Funktionen und Datentypen der Musterlösung</h2>");
+		if (request.getParameter("getidentifiererror") != null) {
+			out.println("<p style=\"color: red\">Beim Analysieren der Musterlösung ist ein Fehler aufgetreten: " + request.getParameter("getidentifiererror") + "</p>");
+		}
 		out.println("<form action=\"" + Util.generateHTMLLink("?", response) + "\" method=post id=getHaskellIdentifiersForm>");
 		out.println("<input type=hidden name=testid value=\"" + test.getId() + "\">");
 		out.println("<input type=hidden name=action value=getHaskellIdentifiers>");

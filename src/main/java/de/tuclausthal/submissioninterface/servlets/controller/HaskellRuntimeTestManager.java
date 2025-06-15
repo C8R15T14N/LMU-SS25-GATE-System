@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -97,18 +98,21 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		if ("getHaskellIdentifiers".equals(request.getParameter("action"))) {
 			// TODO@CHW what happens if no model solution is uploaded?
 
-			SubprocessResult res = evaluateWithGhci(new String[] { ":set -package hashable", ":m + Data.Hashable", "hash [1,2,3]" }, test.getTask());
+			try {
+				SubprocessResult res = evaluateWithGhci(new String[] { "hashable", "QuickCheck" }, new String[] { "Data.Hashable", "Test.QuickCheck" }, true, new String[] { ":browse", "hash [1,2,3]" }, test.getTask());
+				LOG.info("STDOUT IS {}", res.stdOut());
+				LOG.info("STDERR IS {}", res.stdErr());
+				LOG.info("EXIT CODE IS {}", res.exitCode());
+				LOG.info("ABORTED IS {}", res.aborted());
 
-			LOG.info("STDOUT IS {}", res.stdOut());
-			LOG.info("STDERR IS {}", res.stdErr());
-			LOG.info("EXIT CODE IS {}", res.exitCode());
-			LOG.info("ABORTED IS {}", res.aborted());
-
-			// TODO@CHW
-			// browse haskell identifiers of model solution
-			// start transaction to store identifiers in the database and commit
-			// send redirect to HRTManager
-			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+				// TODO@CHW
+				// browse haskell identifiers of model solution
+				// start transaction to store identifiers in the database and commit
+				// send redirect to HRTManager
+				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+			} catch (IOException e) {
+				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId() + "&getidentifiererror=" + e.getMessage(), response));
+			}
 		} else if ("generateNewTestSteps".equals(request.getParameter("action"))) {
 			int numberOfTestSteps = Util.parseInteger(request.getParameter("numberOfTestSteps"), 0);
 			String[][] testcases = new String[numberOfTestSteps][3];
@@ -149,15 +153,17 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	 *  2. The DockerTest includes logic to analyze the subprocess output, based on the DockerTestSteps it consists
 	 *     of. Since this function evaluates arbitrary ghci expressions, this post-processing is not suitable here.
 	 *
-	 * @param expressions List of expressions (e.g. ["expr1", "expr2"]) that should be evaluated by ghci in this order
-	 *                    (e.g. this will call "ghci -e expr1 -e expr2").
+	 * @param packagesToEnable List of packages (e.g. ["QuickCheck"]), that need to be enabled (e.g. ":set -package QuickCheck")
+	 * @param modulesToImport List of modules (e.g. ["Control.Monad", "Test.QuickCheck"]) that need to be imported (e.g. ":m + Control.Monad Test.QuickCheck")
+	 * @param loadModelSolution Whether the model solution should be loaded into ghci (i.e. using "ghci :l")
+	 * @param expressionsToEvaluate List of expressions (e.g. ["expr1", "expr2"]) that should be evaluated by ghci in this order (e.g. this will call "ghci -e expr1 -e expr2").
 	 * @param task Task, for which the testcases should be generated based on the model solution
 	 * @return result of the subprocess
 	 */
-	private SubprocessResult evaluateWithGhci(String[] expressions, Task task) throws IOException {
+	private SubprocessResult evaluateWithGhci(String[] packagesToEnable, String[] modulesToImport, boolean loadModelSolution, String[] expressionsToEvaluate, Task task) throws IOException {
 		final Path taskPath = Util.constructPath(Configuration.getInstance().getDataPath(), task);
 		final Path modelSolutionPath = taskPath.resolve(TaskPath.MODELSOLUTIONFILES.getPathComponent());
-		final int safeDockerTimeout = 10;
+		final int safeDockerTimeout = 30;
 
 		Path generatorTempDir = null;
 		try {
@@ -176,9 +182,30 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				Util.recursiveCopy(modelSolutionPath, modelSolutionDir);
 			}
 
+			Path hsFile = null;
+			if (loadModelSolution) {
+				// Expect exactly one .hs file among the modelsolution files -> this file will be used to generate the testcases
+				try (Stream<Path> stream = Files.list(modelSolutionDir)) {
+					List<Path> hsFiles = stream.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".hs")).toList();
+
+					if (hsFiles.size() != 1) {
+						throw new IOException("Expected exactly one .hs file in modelSolutionDir, found " + hsFiles.size() + " files.");
+					} else {
+						hsFile = hsFiles.get(0);
+					}
+				}
+			}
+
 			// TODO@CHW: testCode is more complex in DockerTest
 			StringBuilder testCode = new StringBuilder("ghci");
-			for (String expression : expressions) {
+			for (String packageToEnable : packagesToEnable) {
+				testCode.append(" -e \"").append(":set -package ").append(packageToEnable).append("\"");
+			}
+			testCode.append(" -e \":m + ").append(String.join(" ", modulesToImport)).append("\"");
+			if (hsFile != null) {
+				testCode.append(" -e \"").append(":load ").append(hsFile.getFileName().toString()).append("\"");
+			}
+			for (String expression : expressionsToEvaluate) {
 				testCode.append(" -e \"").append(expression).append("\"");
 			}
 
