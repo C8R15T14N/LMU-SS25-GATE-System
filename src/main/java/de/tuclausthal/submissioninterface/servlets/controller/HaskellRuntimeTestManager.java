@@ -97,7 +97,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		if ("getHaskellIdentifiers".equals(request.getParameter("action"))) {
 			// TODO@CHW what happens if no model solution is uploaded?
 
-			SubprocessResult res = evaluateWithGhci(new String[] { "1 + 1", "sum [1,2,3]" }, test.getTask());
+			SubprocessResult res = evaluateWithGhci(new String[] { ":set -package hashable", ":m + Data.Hashable", "hash [1,2,3]" }, test.getTask());
 
 			LOG.info("STDOUT IS {}", res.stdOut());
 			LOG.info("STDERR IS {}", res.stdErr());
