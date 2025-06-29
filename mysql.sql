@@ -78,6 +78,30 @@ CREATE TABLE IF NOT EXISTS `groups_tutors` (
 -- --------------------------------------------------------
 
 --
+-- Tabellenstruktur für Tabelle `haskellruntimetestidentifier`
+--
+
+DROP TABLE IF EXISTS `haskellruntimetestidentifier`;
+CREATE TABLE `haskellruntimetestidentifier`
+(
+  `identifierid`                   integer      NOT NULL AUTO_INCREMENT,
+  `classdefinition`                longtext,
+  `classname`                      varchar(255),
+  `functionconcretetype`           varchar(255),
+  `functiondefaulttype`            varchar(255),
+  `functionname`                   varchar(255),
+  `functiontype`                   varchar(255),
+  `identifierclass`                varchar(255) NOT NULL,
+  `newtypeordataarbitraryinstance` longtext,
+  `newtypeordatadefinition`        varchar(255),
+  `newtypeordatatypename`          varchar(255),
+  `testid`                         integer      NOT NULL,
+  PRIMARY KEY (`identifierid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+-- --------------------------------------------------------
+
+--
 -- Tabellenstruktur für Tabelle `javaadvancedioteststep`
 --
 
@@ -508,6 +532,12 @@ ALTER TABLE `groups`
 ALTER TABLE `groups_tutors`
   ADD CONSTRAINT `FK8EAE7CC842D82B98` FOREIGN KEY (`tutors_id`) REFERENCES `participations` (`id`),
   ADD CONSTRAINT `FK8EAE7CC8BB3EB910` FOREIGN KEY (`groups_gid`) REFERENCES `groups` (`gid`);
+
+--
+-- Constraints der Tabelle `haskellruntimetestidentifier`
+--
+ALTER TABLE `haskellruntimetestidentifier`
+  ADD CONSTRAINT FKimd1t2tucxm6cy4b7l1vxj7b2 FOREIGN KEY (`testid`) REFERENCES `tests` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints der Tabelle `javaadvancedioteststep`
