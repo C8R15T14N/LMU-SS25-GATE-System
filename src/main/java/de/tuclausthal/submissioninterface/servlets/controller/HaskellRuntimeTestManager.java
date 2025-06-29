@@ -268,16 +268,16 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			}
 
 			// TODO@CHW: testCode is more complex in DockerTest
-			StringBuilder testCode = new StringBuilder("ghci");
+			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
 			for (String packageToEnable : packagesToEnable) {
-				testCode.append(" -e \"").append(":set -package ").append(packageToEnable).append("\"");
+				appendGhciEvaluateArgument(testCode, ":set -package " + packageToEnable);
 			}
-			testCode.append(" -e \":m + ").append(String.join(" ", modulesToImport)).append("\"");
+			appendGhciEvaluateArgument(testCode, ":m + " + String.join(" ", modulesToImport));
 			if (hsFile != null) {
-				testCode.append(" -e \"").append(":load ").append(hsFile.getFileName().toString()).append("\"");
+				appendGhciEvaluateArgument(testCode, ":load " + hsFile.getFileName().toString());
 			}
 			for (String expression : expressionsToEvaluate) {
-				testCode.append(" -e \"").append(expression).append("\"");
+				appendGhciEvaluateArgument(testCode, expression);
 			}
 
 			final Path testDriver = administrativeDir.resolve("test.sh");
@@ -343,6 +343,10 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				Util.recursiveDelete(generatorTempDir);
 			}
 		}
+	}
+
+	private void appendGhciEvaluateArgument(StringBuilder testCode, String argument) {
+		testCode.append(" -e '").append(argument.replace("'", "'\"'\"'").replace("\t", "    ")).append("'");
 	}
 
 	private List<String> browseModelSolution(Task task) throws IOException {
@@ -491,7 +495,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				data %1$s = %1$s
 				
 				instance Show %1$s where
-				  show %1$s = \\"@PLACEHOLDER@\\"
+				  show %1$s = "@PLACEHOLDER@"
 				
 				instance Arbitrary %1$s where
 				  arbitrary = return %1$s
@@ -507,16 +511,16 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				instance Show target => Show (%1$s target) where
 				  show (%1$s name cycleLength intMap) =
 				    name
-				      ++ \\" i = case i of \\"
-				      ++ concatMap (liftM2 (++) show ((\\" -> \\" ++) . (++ \\"; \\") . show . intMap)) [0 .. cycleLength - 1]
-				      ++ \\"x -> \\"
+				      ++ " i = case i of "
+				      ++ concatMap (liftM2 (++) show ((" -> " ++) . (++ "; ") . show . intMap)) [0 .. cycleLength - 1]
+				      ++ "x -> "
 				      ++ name
-				      ++ \\" (abs (mod x \\"
+				      ++ " (abs (mod x "
 				      ++ show cycleLength
-				      ++ \\"))\\"
+				      ++ "))"
 				
 				instance Arbitrary target => Arbitrary (%1$s target) where
-				  arbitrary = %1$s \\"cyclicIntMap\\" 50 <$> arbitrary
+				  arbitrary = %1$s "cyclicIntMap" 50 <$> arbitrary
 				""", CYCLIC_INT_MAP_TYPE_NAME);
 
 		// String safeAsciiValues = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz()[]{}+-*/.,:; _!?#$%&<=>@";
@@ -526,7 +530,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 		String charStringOnlySafeAscii = String.format("""
 				safeAsciiChar :: Gen Char
-				safeAsciiChar = elements \\"%1$s\\"
+				safeAsciiChar = elements "%1$s"
 				
 				newtype %2$s = %2$s Char
 				
@@ -585,8 +589,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				""", numberOfTestcases, parameterTypeTuple, PLACEHOLDER_TYPE_NAME);
 
 		List<String> expressionsToEvaluate = new ArrayList<>();
-		expressionsToEvaluate.add("testcaseSeparator = \\\"" + TESTCASE_SEPARATOR + "\\\"");
-		expressionsToEvaluate.add("testcaseValueSeparator = \\\"" + TESTCASE_VALUE_SEPARATOR + "\\\"");
+		expressionsToEvaluate.add("testcaseSeparator = \"" + TESTCASE_SEPARATOR + "\"");
+		expressionsToEvaluate.add("testcaseValueSeparator = \"" + TESTCASE_VALUE_SEPARATOR + "\"");
 		expressionsToEvaluate.add(placeholderType);
 		expressionsToEvaluate.add(charStringOnlySafeAscii);
 		expressionsToEvaluate.add(toStringList);
@@ -727,7 +731,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		List<String> expressionsToEvaluate = new ArrayList<>();
 		for (String wrappedFunctionCall : wrappedFunctionCalls) {
 			expressionsToEvaluate.add(wrappedFunctionCall);
-			expressionsToEvaluate.add(String.format("putStr \\\"%s\\\"", expectedValueSeparator));
+			expressionsToEvaluate.add(String.format("putStr \"%s\"", expectedValueSeparator));
 		}
 
 		String[] packagesToEnable = new String[] { "hashable" };
@@ -750,7 +754,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	}
 
 	public String wrapGhciExpressionInCatch(String expression, String exceptionLinePrefix) {
-		return String.format("catch (putStr (show (%s))) ((putStr . (\\\"%s\\\" ++) . show) :: SomeException -> IO ())", expression, exceptionLinePrefix);
+		return String.format("catch (putStr (show (%s))) ((putStr . (\"%s\" ++) . show) :: SomeException -> IO ())", expression, exceptionLinePrefix);
 	}
 
 	public static String prettyPrintFunctionCall(String functionCall) {
@@ -929,9 +933,9 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 					        where
 					          splitElements numElements numRecursiveCalls recursiveCallId =
 					            div numElements numRecursiveCalls + intDivRoundingCompensation
-								  where
-								    intDivRoundingCompensation =
-									  if recursiveCallId < mod numElements numRecursiveCalls then 1 else 0
+					              where
+					                intDivRoundingCompensation =
+					                  if recursiveCallId < mod numElements numRecursiveCalls then 1 else 0
 					""", constraint, typename, recursiveReturnExpressions.isEmpty() ? "False" : "True", String.join(", ", freqTuples), String.join(", ", nonrecursiveReturnExpressions));
 		}
 
