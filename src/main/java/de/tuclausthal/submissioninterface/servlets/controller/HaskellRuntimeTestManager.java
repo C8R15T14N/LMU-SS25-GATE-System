@@ -25,8 +25,6 @@ import java.io.IOException;
 import java.io.Serial;
 import java.io.Writer;
 import java.lang.invoke.MethodHandles;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -52,6 +50,7 @@ import de.tuclausthal.submissioninterface.persistence.dao.ParticipationDAOIf;
 import de.tuclausthal.submissioninterface.persistence.dao.TestDAOIf;
 import de.tuclausthal.submissioninterface.persistence.datamodel.DockerTestStep;
 import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTest;
+import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTestIdentifier;
 import de.tuclausthal.submissioninterface.persistence.datamodel.Participation;
 import de.tuclausthal.submissioninterface.persistence.datamodel.ParticipationRole;
 import de.tuclausthal.submissioninterface.persistence.datamodel.Task;
@@ -103,43 +102,36 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			return;
 		}
 
-		if ("getHaskellIdentifiers".equals(request.getParameter("action"))) {
-			// TODO@CHW what happens if no model solution is uploaded?
-
+		if ("browseModelSolution".equals(request.getParameter("action"))) {
 			try {
-				SubprocessResult res = evaluateWithGhci(new String[] { "hashable", "QuickCheck" }, new String[] { "Data.Hashable", "Test.QuickCheck" }, true, new String[] { ":browse", "hash [1,2,3]" }, test.getTask(), true);
-				LOG.info("STDOUT IS {}", res.stdOut());
-				LOG.info("STDERR IS {}", res.stdErr());
-				LOG.info("EXIT CODE IS {}", res.exitCode());
-				LOG.info("ABORTED IS {}", res.aborted());
-
-				// TODO@CHW
-				// browse haskell identifiers of model solution
-				// start transaction to store identifiers in the database and commit
-				// send redirect to HRTManager
-				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session);
 			} catch (IOException e) {
-				String errorMessage = URLEncoder.encode(Util.escapeHTML(e.getMessage()), StandardCharsets.UTF_8);
-				response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId() + "&getidentifiererror=" + errorMessage, response));
+				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
 			}
-		} else if ("generateNewTestSteps".equals(request.getParameter("action"))) {
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("generateFunctionTestcases".equals(request.getParameter("action"))) {
+			int identifierId = Util.parseInteger(request.getParameter("identifierid"), -1);
 			int numberOfTestSteps = Util.parseInteger(request.getParameter("numberOfTestSteps"), 0);
 
-			List<DockerTestStepData> dockerTestStepDatas = generateTestcases(numberOfTestSteps, test.getTask());
-			// TODO@CHW catch IOException
+			if (identifierId != -1 && numberOfTestSteps > 0) {
+				try {
+					List<DockerTestStepData> dockerTestStepDatas = readClassifiedIdentifiersAndGenerateFunctionTestcases(haskellRuntimeTest, identifierId, numberOfTestSteps);
 
-			Transaction tx = session.beginTransaction();
-			for (DockerTestStepData dockerTestStepData : dockerTestStepDatas) {
-				String title = dockerTestStepData.title();
-				String testCode = dockerTestStepData.testCode().replaceAll("\r\n", "\n");
-				String expectedValue = dockerTestStepData.expectedValue().replaceAll("\r\n", "\n");
+					Transaction tx = session.beginTransaction();
+					for (DockerTestStepData dockerTestStepData : dockerTestStepDatas) {
+						String title = dockerTestStepData.title();
+						String testCode = dockerTestStepData.testCode().replaceAll("\r\n", "\n");
+						String expectedValue = dockerTestStepData.expectedValue().replaceAll("\r\n", "\n");
 
-				DockerTestStep newStep = new DockerTestStep(haskellRuntimeTest, title, testCode, expectedValue);
-				session.persist(newStep);
+						DockerTestStep newStep = new DockerTestStep(haskellRuntimeTest, title, testCode, expectedValue);
+						session.persist(newStep);
+					}
+
+					tx.commit();
+				} catch (IOException e) {
+					request.getSession().setAttribute("haskellRuntimeTestGenerateError", e.getMessage());
+				}
 			}
-
-			tx.commit();
-
 			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
 		} else {
 			getServletContext().getNamedDispatcher(DockerTestManager.class.getSimpleName()).forward(request, response);
@@ -149,57 +141,81 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	private record DockerTestStepData(String title, String testCode, String expectedValue) {
 	}
 
-
-	private List<DockerTestStepData> generateTestcases(int numberOfTestSteps, Task task) throws IOException {
-		List<DockerTestStepData> generatedTestcases = new ArrayList<>();
-
-		List<String> haskellIdentifiers = browseModelSolution(task);
-		
-		LOG.info("ALL IDENTIFIERS:");
-		for (String haskellIdentifier : haskellIdentifiers) {
-			LOG.info(haskellIdentifier);
-		}
-
+	private void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) throws IOException {
+		List<String> haskellIdentifiers = browseModelSolution(haskellRuntimeTest.getTask());
 		HaskellClassifiedIdentifiers haskellClassifiedIdentifiers = classifyHaskellIdentifiers(haskellIdentifiers);
 
-		List<String> arbitraryInstances = new ArrayList<>();
+		Transaction tx = session.beginTransaction();
 
-		for(HaskellNewtypeOrData haskellNewtypeOrData : haskellClassifiedIdentifiers.getNewtypesAndDatas()) {
-			String arbitraryInstance = haskellNewtypeOrData.generateArbitraryInstance();
-			arbitraryInstances.add(arbitraryInstance);
+		for (HaskellNewtypeOrData haskellNewtypeOrData : haskellClassifiedIdentifiers.getNewtypesAndDatas()) {
+			HaskellRuntimeTestIdentifier haskellRuntimeTestIdentifier = new HaskellRuntimeTestIdentifier(haskellRuntimeTest, "newtypeordata");
 
-			LOG.info("Newtype/data: {}", haskellNewtypeOrData.typename);
-			LOG.info("Arbitrary instance: {}", arbitraryInstance);
+			haskellRuntimeTestIdentifier.setNewtypeOrDataTypename(haskellNewtypeOrData.getTypename());
+			haskellRuntimeTestIdentifier.setNewtypeOrDataDefinition(haskellNewtypeOrData.getTypeDefinition());
+			haskellRuntimeTestIdentifier.setNewtypeOrDataArbitraryInstance(haskellNewtypeOrData.getArbitraryInstance());
+
+			session.persist(haskellRuntimeTestIdentifier);
 		}
 
-		for(HaskellFunction haskellFunction : haskellClassifiedIdentifiers.getFunctions()) {
-			LOG.info("Function: {}", haskellFunction.name);
-			LOG.info("Type:\t\t\t{}", haskellFunction.typeSignature);
+		for (HaskellFunction haskellFunction : haskellClassifiedIdentifiers.getFunctions()) {
+			HaskellRuntimeTestIdentifier haskellRuntimeTestIdentifier = new HaskellRuntimeTestIdentifier(haskellRuntimeTest, "function");
 
-			String defaultTypeSignature = getGhciDefaultTypeSignature(task, haskellFunction.name);
-			LOG.info("Type (+d):\t\t{}", defaultTypeSignature);
+			haskellRuntimeTestIdentifier.setFunctionName(haskellFunction.getName());
+			haskellRuntimeTestIdentifier.setFunctionType(haskellFunction.getTypeSignature());
+
+			String defaultTypeSignature = getGhciDefaultTypeSignature(haskellRuntimeTest.getTask(), haskellFunction.getName());
+			haskellRuntimeTestIdentifier.setFunctionDefaultType(defaultTypeSignature);
 
 			String concreteTypeSignature = replaceUnconstrainedTypeVariables(defaultTypeSignature, HaskellPrimitiveType.Int); // TODO@CHW other default type
-			LOG.info("Concrete:\t\t{}", concreteTypeSignature);
+			haskellRuntimeTestIdentifier.setFunctionConcreteType(concreteTypeSignature);
 
-			List<String> functionParameterTypes = getFunctionParameterTypes(concreteTypeSignature);
-			LOG.info("Params:\t\t{}", functionParameterTypes);
+			session.persist(haskellRuntimeTestIdentifier);
+		}
 
-			List<TestcaseWithTypes> testcases = generateQuickcheckFunctionTestcases(task, haskellFunction.name, functionParameterTypes, arbitraryInstances, numberOfTestSteps);
+		tx.commit();
+	}
 
-			List<String> functionCalls = generateFunctionCalls(haskellFunction.name, testcases);
-			List<String> expectedValues = computeExpectedValues(functionCalls, task);
+	private List<DockerTestStepData> readClassifiedIdentifiersAndGenerateFunctionTestcases(HaskellRuntimeTest haskellRuntimeTest, int identifierId, int numberOfTestSteps) throws IOException {
+		List<DockerTestStepData> generatedTestcases = new ArrayList<>();
+		HaskellRuntimeTestIdentifier functionIdentifier = null;
+		List<String> arbitraryInstances = new ArrayList<>();
+
+		for (HaskellRuntimeTestIdentifier identifier : haskellRuntimeTest.getIdentifiers()) {
+			switch (identifier.getIdentifierClass()) {
+				case "newtypeordata":
+					if (identifier.getNewtypeOrDataArbitraryInstance() != null) {
+						arbitraryInstances.add(identifier.getNewtypeOrDataArbitraryInstance());
+					}
+					break;
+				case "function":
+					if (identifier.getIdentifierid() == identifierId) {
+						functionIdentifier = identifier;
+					}
+					break;
+			}
+		}
+
+		if (functionIdentifier != null) {
+			// TODO@CHW maybe throw error if functionIdentifier does not contain all required fields / if some are null
+			String functionName = functionIdentifier.getFunctionName();
+			String functionType = functionIdentifier.getFunctionType();
+			String functionConcreteType = functionIdentifier.getFunctionConcreteType();
+			List<String> functionParameterTypes = getFunctionParameterTypes(functionConcreteType);
+
+			List<TestcaseWithTypes> testcases = generateQuickcheckFunctionTestcases(haskellRuntimeTest.getTask(), functionName, functionParameterTypes, arbitraryInstances, numberOfTestSteps);
+
+			List<String> functionCalls = generateFunctionCalls(functionName, testcases);
+			List<String> expectedValues = computeExpectedValues(functionCalls, haskellRuntimeTest.getTask());
 
 			if (functionCalls.size() != expectedValues.size()) {
 				throw new AssertionError(String.format("Expected values: %d, function calls: %d", expectedValues.size(), functionCalls.size()));
 			}
 
 			for (int i = 0; i < functionCalls.size(); i++) {
-				LOG.info(prettyPrintFunctionCall(functionCalls.get(i)));
-				LOG.info(expectedValues.get(i));
-
-				generatedTestcases.add(new DockerTestStepData("Testcase " + i, functionCalls.get(i), expectedValues.get(i)));
+				generatedTestcases.add(new DockerTestStepData(functionName + " :: " + functionType, functionCalls.get(i), expectedValues.get(i)));
 			}
+		} else {
+			throw new IOException("Invalid identifier id.");
 		}
 
 		return generatedTestcases;
@@ -333,7 +349,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				} else if (exitCode == 24) {
 					throw new IOException("Running haskell testcase generator failed (Out of memory)");
 				} else if (exitCode != 0) {
-					throw new IOException("Running haskell testcase generator failed with exit code " + exitCode + ". Output on stderr: " + stdErr);
+					throw new IOException("Running haskell testcase generator failed with exit code " + exitCode + ". Output on stderr:\n" + stdErr);
 				}
 			}
 
@@ -580,7 +596,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				""");
 
 		String haskellCommand = String.format("""
-				replicateM %d (generate (arbitrary :: Gen %s))
+				replicateM (%d) (generate (arbitrary :: Gen %s))
 				  >>= putStrLn . intercalate testcaseSeparator . map
 				        ( intercalate testcaseValueSeparator
 				        . filter (/= show %s)
@@ -838,7 +854,9 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 	private class HaskellNewtypeOrData {
 		private final String typename;
+		private final String typeDefinition;
 		private final List<String> constructors = new ArrayList<>();
+		private final String arbitraryInstance;
 
 		public HaskellNewtypeOrData(String hsNewtypeOrData) {
 			String normalizedInput = hsNewtypeOrData.replace("\n", " ").trim();
@@ -848,6 +866,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			Matcher matcher = typePattern.matcher(normalizedInput);
 			if (matcher.find()) {
 				this.typename = matcher.group("typename").trim().replace("\n", " ");
+				this.typeDefinition = hsNewtypeOrData;
 
 				Pattern namedConstructorPattern = Pattern.compile("(?<constr>\\b\\w+\\b)\\s*\\{\\s*(?<fields>.*?)\\s*}");
 
@@ -870,9 +889,27 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 						constructors.add(constructor.trim());
 					}
 				}
+
+				this.arbitraryInstance = generateArbitraryInstance();
 			} else {
 				throw new IllegalArgumentException("Invalid newtype/data definition: " + hsNewtypeOrData);
 			}
+		}
+
+		public String getArbitraryInstance() {
+			return arbitraryInstance;
+		}
+
+		public String getTypename() {
+			return typename;
+		}
+
+		public String getTypeDefinition() {
+			return typeDefinition;
+		}
+
+		public List<String> getConstructors() {
+			return constructors;
 		}
 
 		@Override

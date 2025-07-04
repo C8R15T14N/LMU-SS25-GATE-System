@@ -22,16 +22,16 @@ package de.tuclausthal.submissioninterface.servlets.view;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serial;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import de.tuclausthal.submissioninterface.persistence.datamodel.DockerTestStep;
 import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTest;
+import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTestIdentifier;
 import de.tuclausthal.submissioninterface.servlets.GATEView;
 import de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager;
 import de.tuclausthal.submissioninterface.servlets.controller.TaskManager;
@@ -55,10 +55,53 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 
 		HaskellRuntimeTest test = (HaskellRuntimeTest) request.getAttribute("test");
 
+		HttpSession httpSession = request.getSession(false);
+
 		template.addKeepAlive();
 		template.printEditTaskTemplateHeader("Haskell Runtime Test bearbeiten", test.getTask());
 
 		PrintWriter out = response.getWriter();
+
+		if (httpSession != null) {
+			out.println(errorBoxIfErrorOccurred(httpSession, "haskellRuntimeTestBrowseError", "Beim Analysieren der Musterlösung ist ein Fehler aufgetreten"));
+			out.println(errorBoxIfErrorOccurred(httpSession, "haskellRuntimeTestGenerateError", "Beim Generieren der Testfälle ist ein Fehler aufgetreten"));
+		}
+
+		out.println("""
+				<script>
+					function disableGeneratorCalls(button) {
+						const rect = button.getBoundingClientRect();
+				        button.style.width = rect.width + "px";
+				        button.style.height = rect.height + "px";
+						button.innerHTML = '<span class="spinner"></span>';
+						Array.from(document.getElementsByClassName('generatorCaller')).forEach(b => b.disabled = true);
+					}
+					function submitGeneratorForm(formId, button) {
+						const f = document.getElementById(formId);
+						if (f.reportValidity()) {
+							disableGeneratorCalls(button);
+							f.submit();
+						}
+					}
+				</script>
+				<style>
+					span.spinner {
+						width: 0.8em;
+						height: 0.8em;
+						border: 2px solid #ccc;
+						border-top: 2px solid #333;
+						border-radius: 50%;
+						animation: spinLoadingAnimation 0.6s linear infinite;
+						display: inline-block;
+						vertical-align: middle;
+					}
+					@keyframes spinLoadingAnimation {
+						to { transform: rotate(360deg); }
+					}
+				</style>
+				""");
+
+		out.println("<link href=\"" + request.getContextPath() + "/assets/prism/prism.css\" rel=\"stylesheet\">");
 
 		// similar code in TestManagerAddTestFormView
 		out.println("<h2>" + Util.escapeHTML(test.getTestTitle()) + "</h2>");
@@ -97,34 +140,95 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		out.println("<hr>");
 
 		out.println("<h2>Benutzerdefinierte Haskell Funktionen und Datentypen der Musterlösung</h2>");
-		if (request.getParameter("getidentifiererror") != null) {
-			String errorMessage = URLDecoder.decode(request.getParameter("getidentifiererror"), StandardCharsets.UTF_8);
-			out.println("<p style=\"color: red\">Beim Analysieren der Musterlösung ist ein Fehler aufgetreten: " + errorMessage + "</p>");
-		}
-		out.println("<form action=\"" + Util.generateHTMLLink("?", response) + "\" method=post id=getHaskellIdentifiersForm>");
-		out.println("<input type=hidden name=testid value=\"" + test.getId() + "\">");
-		out.println("<input type=hidden name=action value=getHaskellIdentifiers>");
-		out.println("<input type=button value=\"Musterlösung analysieren\" onclick=\"this.disabled=true; document.getElementById('getHaskellIdentifiersIsRunning').style.display='block'; document.getElementById('getHaskellIdentifiersForm').submit();\">");
-		out.println("<div id=\"getHaskellIdentifiersIsRunning\" style=\"display: none;\">Bitte warten...</div>\n");
-		out.println("</form>");
+		StringBuilder newtypeOrDatasHtml = new StringBuilder();
+		newtypeOrDatasHtml.append("""
+				<tr>
+					<th colspan="1">Typname</th>
+					<th colspan="4">Typdefinition und <code>Arbitrary</code> Instanz</th>
+				</tr>
+				""");
 
-		out.println("<h2>Neue Testschritte automatisch generieren</h2>");
-		out.println("<p style=\"color: red\">Testschritt Generator ist noch nicht vollständig implementiert.</p>"); // TODO@CHW
-		out.println("<form action=\"" + Util.generateHTMLLink("?", response) + "\" method=post>");
-		out.println("<input type=hidden name=testid value=\"" + test.getId() + "\">");
-		out.println("<input type=hidden name=action value=generateNewTestSteps>");
-		out.println("<table>");
-		out.println("<tr>");
-		out.println("<th>Number of test steps</th>");
-		out.println("<td><input type=text name=numberOfTestSteps value=\"10\" required=required pattern=\"[0-9]+\"></td>");
-		out.println("</tr>");
-		out.println("<tr>");
-		out.print("<td colspan=2 class=mid><input type=submit value=speichern> <a href=\"");
-		out.print(Util.generateHTMLLink(TaskManager.class.getSimpleName() + "?action=editTask&taskid=" + test.getTask().getTaskid() + "&lecture=" + test.getTask().getTaskGroup().getLecture().getId(), response));
-		out.println("\">Abbrechen</a></td>");
-		out.println("</tr>");
+		StringBuilder functionsHtml = new StringBuilder();
+		functionsHtml.append("""
+				<tr>
+					<th>Funktion</th>
+					<th>Typsignatur</th>
+					<th>Typsignatur (+d)</th>
+					<th>Konkrete Typsignatur</th>
+					<th>Generator ausführen</th>
+				</tr>
+				""");
+
+		boolean showFunctionTable = false;
+		boolean showNewtypeOrDataTable = false;
+
+		for (HaskellRuntimeTestIdentifier identifier : test.getIdentifiers()) {
+			switch (identifier.getIdentifierClass()) {
+				case "newtypeordata":
+					showNewtypeOrDataTable = true;
+					newtypeOrDatasHtml.append(String.format("""
+							<tr>
+								<td colspan="1"><code class="language-haskell">%1$s</code></td>
+								<td colspan="4">
+									<details style="width: 60vw;">
+										<summary><code class="language-haskell">%2$s</code></summary>
+										<pre style="overflow-x: auto; white-space: pre; max-width: 100%%"><code class="language-haskell">%3$s</code></pre>
+									</details>
+								</td>
+							</tr>
+							""", Util.escapeHTML(identifier.getNewtypeOrDataTypename()), Util.escapeHTML(identifier.getNewtypeOrDataDefinition()), Util.escapeHTML(identifier.getNewtypeOrDataArbitraryInstance())));
+					break; //TODO@CHW: 60vw might not be a good width depending on the page template
+				case "function":
+					showFunctionTable = true;
+					functionsHtml.append(String.format("""
+							<tr>
+								<td><code class="language-haskell">%2$s</code></td>
+								<td><code class="language-haskell">%3$s</code></td>
+								<td><code class="language-haskell">%6$s</code></td>
+								<td><code class="language-haskell">%7$s</code></td>
+								<td style="text-align: center;">
+									<form action="%4$s" method="post" id="generateFunctionTestcasesForm%1$s">
+										<input type=hidden name=testid value=%5$s>
+										<input type=hidden name=identifierid value=%1$s>
+										<input type=hidden name=action value=generateFunctionTestcases>
+										<input type="text" name="numberOfTestSteps" value="10" required="required" pattern="^[1-9][0-9]?$" style="width: 3ch">
+										<button class="generatorCaller"
+												onclick="submitGeneratorForm('generateFunctionTestcasesForm%1$s', this)">
+											Testfälle generieren
+										</button>
+									</form>
+								</td>
+							</tr>
+							""", identifier.getIdentifierid(), Util.escapeHTML(identifier.getFunctionName()), Util.escapeHTML(identifier.getFunctionType()), Util.generateHTMLLink("?", response), test.getId(), Util.escapeHTML(identifier.getFunctionDefaultType()), Util.escapeHTML(identifier.getFunctionConcreteType())));
+					break;
+			}
+		}
+
+		out.println("<table style=\"border: none;\">");
+		if (showNewtypeOrDataTable) {
+			out.println(newtypeOrDatasHtml);
+		}
+		if (showNewtypeOrDataTable && showFunctionTable) {
+			out.println("<tr style=\"border: none;\"><td style=\"height: 12px; border: none;\" colspan=\"100%\"></td></tr>");
+		}
+		if (showFunctionTable) {
+			out.println(functionsHtml);
+		}
 		out.println("</table>");
-		out.println("</form>");
+
+		out.println(String.format("""
+				<br>
+				<div align="center">
+					<form action="%1$s" method=post id=browseModelSolutionForm>
+						<input type=hidden name=testid value="%2$s">
+						<input type=hidden name=action value=browseModelSolution>
+						<button class="generatorCaller"
+							onclick="submitGeneratorForm('browseModelSolutionForm', this)">
+							Musterlösung analysieren (:browse)
+						</button>
+					</form>
+				</div>
+				""", Util.generateHTMLLink("?", response), test.getId()));
 
 		out.println("<h2>Testschritte bearbeiten</h2>");
 		out.println("<table>");
@@ -148,13 +252,32 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						    "(Löschen)" +
 						"</a>" +
 					"</td>" +
-					"<td>" + Util.escapeHTML(step.getTestcode()) + "</td>" +
-					"<td>" + Util.escapeHTML(step.getExpect()) + "</td>" +
+					"<td><code class=\"language-haskell\">" + Util.escapeHTML(step.getTestcode()) + "</code></td>" +
+					"<td><code class=\"language-haskell\">" + Util.escapeHTML(step.getExpect()) + "</code></td>" +
 				"</tr>"
 			/* @formatter:on */);
 		}
 		out.println("</table>");
 
+		out.println("<script src=\"" + request.getContextPath() + "/assets/prism/prism.js\" defer></script>");
 		template.printTemplateFooter();
+	}
+
+	private String errorBoxIfErrorOccurred(HttpSession httpSession, String httpSessionAttributeName, String errorTitle) {
+		String errorMessage = (String) httpSession.getAttribute(httpSessionAttributeName);
+		httpSession.removeAttribute(httpSessionAttributeName);
+
+		return (errorMessage == null) ? "" : String.format("""
+				<div style="border: 1px solid red;">
+					<div style="background-color: red; color: white; padding: 4px; font-weight: bold; overflow: auto">
+						%1$s
+					</div>
+					<div style="background-color: #ffe5e5; color: red; padding: 4px; overflow: auto;">
+						<pre>%2$s</pre>
+					</div>
+				</div>
+				<br>
+				<script>alert("%1$s")</script>
+				""", errorTitle, Util.escapeHTML(errorMessage));
 	}
 }
