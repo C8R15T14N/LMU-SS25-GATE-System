@@ -76,7 +76,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	final static private Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
 	// TODO@CHW: should safe docker path be part of de.tuclausthal.submissioninterface.util.Configuration? (since it is duplicated from DockerTest)
-	final static public String SAFE_DOCKER_SCRIPT = "/usr/local/bin/safe-docker";
+	final static private String SAFE_DOCKER_SCRIPT = "/usr/local/bin/safe-docker";
 
 	@Override
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -202,7 +202,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			String functionConcreteType = functionIdentifier.getFunctionConcreteType();
 			List<String> functionParameterTypes = getFunctionParameterTypes(functionConcreteType);
 
-			List<TestcaseWithTypes> testcases = generateQuickcheckFunctionTestcases(haskellRuntimeTest.getTask(), functionName, functionParameterTypes, arbitraryInstances, numberOfTestSteps);
+			List<TestcaseWithTypes> testcases = generateQuickcheckFunctionTestcases(haskellRuntimeTest.getTask(), functionParameterTypes, arbitraryInstances, numberOfTestSteps);
 
 			List<String> functionCalls = generateFunctionCalls(functionName, testcases);
 			List<String> expectedValues = computeExpectedValues(functionCalls, haskellRuntimeTest.getTask());
@@ -370,7 +370,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return splitLinesButKeepMultilines(result.stdOut());
 	}
 
-	public List<String> splitLinesButKeepMultilines(String resultStdout) {
+	private List<String> splitLinesButKeepMultilines(String resultStdout) {
 		List<String> haskellIdentifiers = new ArrayList<>();
 
 		for (String line : resultStdout.split("\\R")) {
@@ -389,7 +389,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return haskellIdentifiers;
 	}
 
-	public HaskellClassifiedIdentifiers classifyHaskellIdentifiers(List<String> haskellIdentifiers) {
+	private HaskellClassifiedIdentifiers classifyHaskellIdentifiers(List<String> haskellIdentifiers) {
 		HaskellClassifiedIdentifiers classifiedIdentifiers = new HaskellClassifiedIdentifiers();
 
 		for (String line : haskellIdentifiers) {
@@ -407,7 +407,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return classifiedIdentifiers;
 	}
 
-	public String getGhciDefaultTypeSignature(Task task, String identifierName) throws IOException {
+	private String getGhciDefaultTypeSignature(Task task, String identifierName) throws IOException {
 		SubprocessResult result = evaluateWithGhci(null, null, true, new String[] { ":type +d " + identifierName }, task, true);
 
 		String defaultTypeSignature = normalizeTypeSignature(result.stdOut().split("::")[1].trim());
@@ -418,13 +418,13 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	public String normalizeTypeSignature(String typeSignature) {
+	private String normalizeTypeSignature(String typeSignature) {
 		typeSignature = typeSignature.replace("\n", "");
 		typeSignature = typeSignature.replaceAll("\\s*->\\s*", " -> ");
 		return typeSignature.trim();
 	}
 
-	public static String replaceUnconstrainedTypeVariables(String typeSignature, HaskellPrimitiveType replacementType) {
+	private static String replaceUnconstrainedTypeVariables(String typeSignature, HaskellPrimitiveType replacementType) {
 		if (typeSignature.contains("=>")) {
 			// TODO@CHW: Implementation not yet correct for Functor, Monad, Applicative, etc.
 			// e.g. (<$>) :: Functor f => (a -> b) -> f a -> f b
@@ -439,7 +439,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return typeSignature.replaceAll("(?<![a-zA-Z])([a-z][a-zA-Z0-9]*)", replacementType.toString());
 	}
 
-	public static List<String> getFunctionParameterTypes(String concreteTypeSignature) {
+	private static List<String> getFunctionParameterTypes(String concreteTypeSignature) {
 		if (concreteTypeSignature.contains("::")) {
 			concreteTypeSignature = concreteTypeSignature.split("::", 2)[1].trim();
 		}
@@ -454,12 +454,12 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 	//TODO@CHW maybe replace all trim() by strip()?
 
-	public static boolean parameterTypeIsFunction(String parameterType) {
+	private static boolean parameterTypeIsFunction(String parameterType) {
 		parameterType = parameterType.strip();
 		return parameterType.contains("->") && parameterType.startsWith("(") && parameterType.endsWith(")");
 	}
 
-	public static String getFunctionReturnType(String concreteTypeSignature) {
+	private static String getFunctionReturnType(String concreteTypeSignature) {
 		if (concreteTypeSignature.contains("::")) {
 			concreteTypeSignature = concreteTypeSignature.split("::", 2)[1].strip();
 		}
@@ -479,7 +479,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	private record TestcaseWithTypes(List<TestcaseSingleParameterWithType> testcaseParametersWithTypes) {
 	}
 
-	private List<TestcaseWithTypes> generateQuickcheckFunctionTestcases(Task task, String functionName, List<String> functionParameterTypes, List<String> arbitraryInstances, int numberOfTestcases) throws IOException {
+	private List<TestcaseWithTypes> generateQuickcheckFunctionTestcases(Task task, List<String> functionParameterTypes, List<String> arbitraryInstances, int numberOfTestcases) throws IOException {
 		if (functionParameterTypes.isEmpty()) {
 			return List.of();
 		}
@@ -565,7 +565,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				  arbitrary = %3$s <$> listOf safeAsciiChar
 				""", safeAsciiValues, typenameCharOnlySafeAscii, typenameStringOnlySafeAscii);
 
-		String toStringList = String.format("""
+		String toStringList = """
 				class ToStringList a where toStringList :: a -> [String]
 				
 				instance (Show a, Show b) => ToStringList (a, b) where toStringList (a, b) = [show a, show b]
@@ -593,7 +593,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				
 				instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i, Show j) => ToStringList (a, b, c, d, e, f, g, h, i, j) where
 				  toStringList (a, b, c, d, e, f, g, h, i, j) = [show a, show b, show c, show d, show e, show f, show g, show h, show i, show j]
-				""");
+				""";
 
 		String haskellCommand = String.format("""
 				replicateM (%d) (generate (arbitrary :: Gen %s))
@@ -715,7 +715,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return String.format("(let %s in let randomFunction %s = (%s . hash . show) (%s) in randomFunction)", cyclicIntMapDefinition, String.join(" ", parameters), cyclicIntMapName, String.join(", ", parameters));
 	}
 
-	public List<String> generateFunctionCalls(String functionName, List<TestcaseWithTypes> testcasesWithTypes) {
+	private List<String> generateFunctionCalls(String functionName, List<TestcaseWithTypes> testcasesWithTypes) {
 		List<String> functionCalls = new ArrayList<>();
 
 		for (TestcaseWithTypes testcaseWithTypes : testcasesWithTypes) {
@@ -737,7 +737,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	}
 
 	// TODO@CHW return value was list[str|None] in python, double check that this is fine
-	public List<String> computeExpectedValues(List<String> functionCalls, Task task) throws IOException {
+	private List<String> computeExpectedValues(List<String> functionCalls, Task task) throws IOException {
 		final String exceptionLinePrefix = "@EXCEPTION@";
 
 		List<String> wrappedFunctionCalls = functionCalls.stream().map(functionCall -> wrapGhciExpressionInCatch(functionCall, exceptionLinePrefix)).toList();
@@ -769,66 +769,57 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return expectedValues;
 	}
 
-	public String wrapGhciExpressionInCatch(String expression, String exceptionLinePrefix) {
+	private String wrapGhciExpressionInCatch(String expression, String exceptionLinePrefix) {
 		return String.format("catch (putStr (show (%s))) ((putStr . (\"%s\" ++) . show) :: SomeException -> IO ())", expression, exceptionLinePrefix);
 	}
 
-	public static String prettyPrintFunctionCall(String functionCall) {
+	private static String prettyPrintFunctionCall(String functionCall) {
 		return functionCall.replaceAll("\\(let cyclicIntMap .*? let randomFunction .*? in randomFunction\\)", "<random function>");
 	}
 
-	// BEGIN OF HASKELL UTILS / UTILS --------------------------------------------------------
-
-	private class HaskellClassifiedIdentifiers {
+	private static class HaskellClassifiedIdentifiers {
 		private final List<HaskellClass> classes = new ArrayList<>();
 		private final List<HaskellNewtypeOrData> newtypesAndDatas = new ArrayList<>();
 		private final List<HaskellFunction> functions = new ArrayList<>();
 
-		public void addClass(String hsClass) {
+		private void addClass(String hsClass) {
 			classes.add(new HaskellClass(hsClass));
 		}
 
-		public void addNewtypeOrData(String hsNewtypeOrData) {
+		private void addNewtypeOrData(String hsNewtypeOrData) {
 			newtypesAndDatas.add(new HaskellNewtypeOrData(hsNewtypeOrData));
 		}
 
-		public void addFunction(String hsFunction) {
+		private void addFunction(String hsFunction) {
 			functions.add(new HaskellFunction(hsFunction));
 		}
 
-		public List<HaskellClass> getClasses() {
+		private List<HaskellClass> getClasses() {
 			return classes;
 		}
 
-		public List<HaskellNewtypeOrData> getNewtypesAndDatas() {
+		private List<HaskellNewtypeOrData> getNewtypesAndDatas() {
 			return newtypesAndDatas;
 		}
 
-		public List<HaskellFunction> getFunctions() {
+		private List<HaskellFunction> getFunctions() {
 			return functions;
 		}
 	}
 
-	private class HaskellClass {
-		private final String hsClass;
-
-		public HaskellClass(String hsClass) {
+	private record HaskellClass(String hsClass) {
+		private HaskellClass {
 			if (!hsClass.startsWith("class") || !hsClass.contains("where")) {
 				throw new IllegalArgumentException("Invalid class definition: " + hsClass);
 			}
-			this.hsClass = hsClass;
-		}
-
-		public String getHsClass() {
-			return hsClass;
 		}
 	}
 
-	private class HaskellFunction {
+	private static class HaskellFunction {
 		private final String name;
 		private final String typeSignature;
 
-		public HaskellFunction(String hsFunction) {
+		private HaskellFunction(String hsFunction) {
 			if (!hsFunction.contains("::")) {
 				throw new IllegalArgumentException("Invalid function definition: " + hsFunction);
 			}
@@ -838,27 +829,22 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			this.typeSignature = parts[1].trim();
 		}
 
-		public String getName() {
+		private String getName() {
 			return name;
 		}
 
-		public String getTypeSignature() {
+		private String getTypeSignature() {
 			return typeSignature;
-		}
-
-		@Override
-		public String toString() {
-			return "FUNCTION " + name + " :: " + typeSignature;
 		}
 	}
 
-	private class HaskellNewtypeOrData {
+	private static class HaskellNewtypeOrData {
 		private final String typename;
 		private final String typeDefinition;
 		private final List<String> constructors = new ArrayList<>();
 		private final String arbitraryInstance;
 
-		public HaskellNewtypeOrData(String hsNewtypeOrData) {
+		private HaskellNewtypeOrData(String hsNewtypeOrData) {
 			String normalizedInput = hsNewtypeOrData.replace("\n", " ").trim();
 
 			Pattern typePattern = Pattern.compile("\\b(?:data|newtype)\\s+" + "(?<typename>[\\w\\s]+?)" + "\\s*=\\s*" + "(?<constructors>.*?)(?=\\s+deriving\\b|$)");
@@ -896,28 +882,19 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			}
 		}
 
-		public String getArbitraryInstance() {
+		private String getArbitraryInstance() {
 			return arbitraryInstance;
 		}
 
-		public String getTypename() {
+		private String getTypename() {
 			return typename;
 		}
 
-		public String getTypeDefinition() {
+		private String getTypeDefinition() {
 			return typeDefinition;
 		}
 
-		public List<String> getConstructors() {
-			return constructors;
-		}
-
-		@Override
-		public String toString() {
-			return "NEWTYPE/DATA " + typename + " = " + constructors;
-		}
-
-		public String generateArbitraryInstance() {
+		private String generateArbitraryInstance() {
 			List<String> recursiveReturnExpressions = new ArrayList<>();
 			List<String> nonrecursiveReturnExpressions = new ArrayList<>();
 
@@ -958,7 +935,6 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 			List<String> freqTuples = getFreqTuples(recursiveReturnExpressions, nonrecursiveReturnExpressions);
 
-			// TODO@CHW: is the indentation correct?
 			return String.format("""
 					instance %sArbitrary (%s) where
 					  arbitrary = sized _gen
@@ -998,18 +974,16 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	public enum HaskellPrimitiveType {
+	private enum HaskellPrimitiveType {
 		Integer, Int, Float, Double, Rational, Bool, Char, String
 	}
 
-	public enum HaskellConstrainedPrimitiveType {
+	private enum HaskellConstrainedPrimitiveType {
 		Char_OnlySafeAscii, String_OnlySafeAscii
 		// TODO@CHW more ideas: Int_OnlyPositive, Float_OnlyPositive, Double_OnlyPositive
 	}
 
-	// TODO@CHW check all visibilities (public/private) in this file
-
-	public static List<String> splitExceptBetweenParentheses(String expression, char openingParenthesis, char closingParenthesis, String splitAt) {
+	private static List<String> splitExceptBetweenParentheses(String expression, char openingParenthesis, char closingParenthesis, String splitAt) {
 		List<String> tokens = new ArrayList<>();
 		int parenthesisDepth = 0;
 		StringBuilder currentToken = new StringBuilder();
@@ -1037,8 +1011,4 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tokens.add(currentToken.toString().trim());
 		return tokens;
 	}
-
-	// END OF HASKELL UTILS / UTILS -----------------------------------------------------------------------------------
-
 }
-
