@@ -152,8 +152,8 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		functionsHtml.append("""
 				<tr>
 					<th>Funktion</th>
-					<th>Typsignatur</th>
-					<th>Typsignatur (+d)</th>
+					<th>Typsignatur (<code>:t</code>)</th>
+					<th>Default Typsignatur (<code>:t +d</code>)</th>
 					<th>Konkrete Typsignatur</th>
 					<th>Generator ausführen</th>
 				</tr>
@@ -224,7 +224,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						<input type=hidden name=action value=browseModelSolution>
 						<button class="generatorCaller"
 							onclick="submitGeneratorForm('browseModelSolutionForm', this)">
-							Musterlösung analysieren (:browse)
+							Musterlösung analysieren (<code>:browse</code>)
 						</button>
 					</form>
 				</div>
@@ -232,15 +232,15 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 
 		out.println("<h2>Testschritte bearbeiten</h2>");
 		out.println("<table>");
-		out.println(/* @formatter:off */
-			"<thead>" +
-				"<tr>" +
-					"<th>Titel</th>" +
-					"<th>Testcode</th>" +
-					"<th>Expected</th>" +
-				"</tr>" +
-			"</thead>"
-		/* @formatter:on */);
+		out.println("""
+				<thead>
+					<tr>
+						<th>Titel</th>
+						<th>Testcode</th>
+						<th>Expected</th>
+					</tr>
+				</thead>
+				""");
 
 		for (DockerTestStep step : test.getTestSteps()) {
 			String deleteTestStepLink = Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId() + "&action=deleteStep&teststepid=" + step.getTeststepid(), response);
