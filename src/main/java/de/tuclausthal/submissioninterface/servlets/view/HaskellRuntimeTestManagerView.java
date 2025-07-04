@@ -215,9 +215,11 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			out.println(functionsHtml);
 		}
 		out.println("</table>");
+		if (showNewtypeOrDataTable || showFunctionTable) {
+			out.println("<br>");
+		}
 
 		out.println(String.format("""
-				<br>
 				<div align="center">
 					<form action="%1$s" method=post id=browseModelSolutionForm>
 						<input type=hidden name=testid value="%2$s">
@@ -226,9 +228,13 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 							onclick="submitGeneratorForm('browseModelSolutionForm', this)">
 							Musterlösung analysieren (<code>:browse</code>)
 						</button>
+						<a  onclick="return sendAsPost(this, 'Wirklich alle Haskell Identifier löschen?')"
+							href="%3$s">
+							(Zurücksetzen)
+						</a>
 					</form>
 				</div>
-				""", Util.generateHTMLLink("?", response), test.getId()));
+				""", Util.generateHTMLLink("?", response), test.getId(), Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId() + "&action=deleteHaskellIdentifiers", response)));
 
 		out.println("<h2>Testschritte bearbeiten</h2>");
 		out.println("<table>");

@@ -103,11 +103,15 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 
 		if ("browseModelSolution".equals(request.getParameter("action"))) {
+			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
 			try {
 				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session);
 			} catch (IOException e) {
 				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
 			}
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("deleteHaskellIdentifiers".equals(request.getParameter("action"))) {
+			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
 			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
 		} else if ("generateFunctionTestcases".equals(request.getParameter("action"))) {
 			int identifierId = Util.parseInteger(request.getParameter("identifierid"), -1);
@@ -139,6 +143,16 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	}
 
 	private record DockerTestStepData(String title, String testCode, String expectedValue) {
+	}
+
+	private void deleteStoredClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) {
+		Transaction tx = session.beginTransaction();
+
+		for (HaskellRuntimeTestIdentifier identifier : haskellRuntimeTest.getIdentifiers()) {
+			session.remove(identifier);
+		}
+
+		tx.commit();
 	}
 
 	private void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) throws IOException {
