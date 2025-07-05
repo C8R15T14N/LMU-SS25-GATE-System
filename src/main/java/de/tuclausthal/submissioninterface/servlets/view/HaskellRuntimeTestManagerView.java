@@ -97,6 +97,19 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					function setActionInputField(actionInputFieldId, actionName) {
 						document.getElementById(actionInputFieldId).value = actionName;
 					}
+					function toggleAllTestcaseSelectionCheckboxes(masterCheckbox, formId) {
+				  		const checkboxes = document.getElementById(formId).getElementsByClassName('testcaseSelectionCheckbox');
+						Array.from(checkboxes).forEach(cb => {
+							cb.checked = masterCheckbox.checked;
+							toggleTableRowHighlight(cb);
+						});
+					}
+					function syncTestcaseSelectionMasterCheckbox(formId) {
+						const checkboxes = document.getElementById(formId).getElementsByClassName('testcaseSelectionCheckbox');
+						const masterCheckbox = document.getElementById(formId).getElementsByClassName('testcaseSelectionMasterCheckbox')[0];
+						const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+						masterCheckbox.checked = allChecked;
+					}
 				</script>
 				<style>
 					span.spinner {
@@ -275,27 +288,29 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						<table width="100%%">
 							<thead>
 								<tr>
-									<th></th>
+									<th style="width: 1%%; white-space: nowrap;">
+										<input type="checkbox" class="testcaseSelectionMasterCheckbox" onchange="toggleAllTestcaseSelectionCheckboxes(this, '%2$s')">
+									</th>
 									<th>Testcode</th>
 									<th>Erwartete Ausgabe</th>
 								</tr>
 							</thead>
 					""", Util.generateHTMLLink("?", response), formId, test.getId()));
-			// TODO@CHW: add a master checkbox that toggles all checkboxes of this form
 
 			for (DockerTestStep step : testStepsGroupedByFunctionNameWithType.get(functionNameWithType)) {
 				out.println(String.format("""
 						<tr>
 							<td style="width: 1%%; white-space: nowrap;">
 								<input type="checkbox"
+									   class="testcaseSelectionCheckbox"
 						  		       name="selectedTestStepIds"
 						  		       value="%3$s"
-						  		       onchange="toggleTableRowHighlight(this)">
+						  		       onchange="syncTestcaseSelectionMasterCheckbox('%4$s'); toggleTableRowHighlight(this)">
 							</td>
 							<td><code class="language-haskell">%1$s</code></td>
 							<td><code class="language-haskell">%2$s</code></td>
 						</tr>
-						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid()));
+						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId));
 			}
 
 			out.println(String.format("""
