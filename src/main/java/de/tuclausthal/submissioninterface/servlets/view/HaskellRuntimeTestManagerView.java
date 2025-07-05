@@ -266,10 +266,13 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 				</div>
 				""", Util.generateHTMLLink("?", response), test.getId(), Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId() + "&action=deleteHaskellIdentifiers", response)));
 
-		out.println("<h2>Testschritte bearbeiten</h2>");
 		// NOTE: DockerTestStep title is used for storing the function signature (see controller servlet)
 		final Map<String, List<DockerTestStep>> testStepsGroupedByFunctionNameWithType = test.getTestSteps().stream().collect(Collectors.groupingBy(DockerTestStep::getTitle));
 		List<String> sortedKeys = testStepsGroupedByFunctionNameWithType.keySet().stream().sorted().toList();
+
+		if (!sortedKeys.isEmpty()) {
+			out.println("<h2>Testschritte bearbeiten</h2>");
+		}
 
 		for (int i = 0; i < sortedKeys.size(); i++) {
 			String functionNameWithType = sortedKeys.get(i);
