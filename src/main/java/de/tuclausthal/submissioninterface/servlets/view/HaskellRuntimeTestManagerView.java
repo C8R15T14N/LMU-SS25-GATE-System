@@ -22,6 +22,9 @@ package de.tuclausthal.submissioninterface.servlets.view;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serial;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -71,8 +74,8 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 				<script>
 					function disableGeneratorCalls(button) {
 						const rect = button.getBoundingClientRect();
-				        button.style.width = rect.width + "px";
-				        button.style.height = rect.height + "px";
+						button.style.width = rect.width + "px";
+						button.style.height = rect.height + "px";
 						button.innerHTML = '<span class="spinner"></span>';
 						Array.from(document.getElementsByClassName('generatorCaller')).forEach(b => b.disabled = true);
 					}
@@ -82,6 +85,17 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 							disableGeneratorCalls(button);
 							f.submit();
 						}
+					}
+					function toggleTableRowHighlight(checkbox) {
+						const row = checkbox.closest('tr');
+						if (checkbox.checked) {
+							row.classList.add('selected-row');
+						} else {
+							row.classList.remove('selected-row');
+						}
+					}
+					function setActionInputField(actionInputFieldId, actionName) {
+						document.getElementById(actionInputFieldId).value = actionName;
 					}
 				</script>
 				<style>
@@ -98,6 +112,9 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					@keyframes spinLoadingAnimation {
 						to { transform: rotate(360deg); }
 					}
+					.selected-row {
+						background-color: #d0e7ff;
+				 	}
 				</style>
 				""");
 
@@ -237,33 +254,72 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 				""", Util.generateHTMLLink("?", response), test.getId(), Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId() + "&action=deleteHaskellIdentifiers", response)));
 
 		out.println("<h2>Testschritte bearbeiten</h2>");
-		out.println("<table>");
-		out.println("""
-				<thead>
-					<tr>
-						<th>Titel</th>
-						<th>Testcode</th>
-						<th>Expected</th>
-					</tr>
-				</thead>
-				""");
+		// NOTE: DockerTestStep title is used for storing the function signature (see controller servlet)
+		final Map<String, List<DockerTestStep>> testStepsGroupedByFunctionNameWithType = test.getTestSteps().stream().collect(Collectors.groupingBy(DockerTestStep::getTitle));
+		List<String> sortedKeys = testStepsGroupedByFunctionNameWithType.keySet().stream().sorted().toList();
 
-		for (DockerTestStep step : test.getTestSteps()) {
-			String deleteTestStepLink = Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId() + "&action=deleteStep&teststepid=" + step.getTeststepid(), response);
-			out.println(/* @formatter:off */
-				"<tr>" +
-					"<td>" +
-						Util.escapeHTML(step.getTitle()) + " " +
-						"<a onclick=\"return sendAsPost(this, 'Wirklich löschen?')\" href=\"" + deleteTestStepLink + "\">" +
-						    "(Löschen)" +
-						"</a>" +
-					"</td>" +
-					"<td><code class=\"language-haskell\">" + Util.escapeHTML(step.getTestcode()) + "</code></td>" +
-					"<td><code class=\"language-haskell\">" + Util.escapeHTML(step.getExpect()) + "</code></td>" +
-				"</tr>"
-			/* @formatter:on */);
+		for (int i = 0; i < sortedKeys.size(); i++) {
+			String functionNameWithType = sortedKeys.get(i);
+
+			final int numberOfTestSteps = testStepsGroupedByFunctionNameWithType.get(functionNameWithType).size();
+			final String numberOfTestStepsText = numberOfTestSteps + " " + (numberOfTestSteps == 1 ? "Testschritt" : "Testschritte");
+
+			out.println("<h3>Funktion <code class=\"language-haskell\">" + functionNameWithType + "</code><span style=\"font-weight: normal;\"> (" + numberOfTestStepsText + ")</span></h3>");
+
+			String formId = "deleteOrDuplicateMultipleTestStepsForm" + i;
+			String formActionInputFieldId = "deleteOrDuplicateMultipleTestStepsFormAction" + i;
+
+			out.println(String.format("""
+					<form action="%1$s" method="post" id="%2$s">
+						<input type="hidden" name="testid" value="%3$s">
+						<table width="100%%">
+							<thead>
+								<tr>
+									<th></th>
+									<th>Testcode</th>
+									<th>Erwartete Ausgabe</th>
+								</tr>
+							</thead>
+					""", Util.generateHTMLLink("?", response), formId, test.getId()));
+			// TODO@CHW: add a master checkbox that toggles all checkboxes of this form
+
+			for (DockerTestStep step : testStepsGroupedByFunctionNameWithType.get(functionNameWithType)) {
+				out.println(String.format("""
+						<tr>
+							<td style="width: 1%%; white-space: nowrap;">
+								<input type="checkbox"
+						  		       name="selectedTestStepIds"
+						  		       value="%3$s"
+						  		       onchange="toggleTableRowHighlight(this)">
+							</td>
+							<td><code class="language-haskell">%1$s</code></td>
+							<td><code class="language-haskell">%2$s</code></td>
+						</tr>
+						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid()));
+			}
+
+			out.println(String.format("""
+					<tr>
+						<td colspan="3" style="text-align: center; padding: 5px">
+							Aktionen für selektierte Testschritte: <input type="hidden" name="action" id="%2$s">
+							<button class="generatorCaller"
+								type="button"
+								onclick="setActionInputField('%2$s', 'duplicateMultipleTestSteps'); submitGeneratorForm('%1$s', this)">
+								duplizieren
+							</button>
+							<button class="generatorCaller"
+								type="button"
+								onclick="setActionInputField('%2$s', 'deleteMultipleTestSteps'); submitGeneratorForm('%1$s', this)">
+								löschen
+							</button>
+						</td>
+					</tr>
+					""", formId, formActionInputFieldId));
+			// TODO@CHW: add button "Duplikate in Selektion entfernen"
+			out.println("</table>");
+			out.println("</form>");
+			out.println("<br>");
 		}
-		out.println("</table>");
 
 		out.println("<script src=\"" + request.getContextPath() + "/assets/prism/prism.js\" defer></script>");
 		template.printTemplateFooter();

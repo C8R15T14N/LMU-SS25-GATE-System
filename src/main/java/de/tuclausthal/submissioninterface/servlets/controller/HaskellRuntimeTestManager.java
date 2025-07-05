@@ -31,8 +31,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jakarta.servlet.ServletException;
@@ -123,9 +125,10 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 					Transaction tx = session.beginTransaction();
 					for (DockerTestStepData dockerTestStepData : dockerTestStepDatas) {
-						String title = dockerTestStepData.title();
-						String testCode = dockerTestStepData.testCode().replaceAll("\r\n", "\n");
-						String expectedValue = dockerTestStepData.expectedValue().replaceAll("\r\n", "\n");
+						// NOTE: DockerTestStep title is used for storing the function signature (needed for grouping the testcases in the view)
+						String title = dockerTestStepData.getFunctionNameWithType();
+						String testCode = dockerTestStepData.getTestCode();
+						String expectedValue = dockerTestStepData.getExpectedValue();
 
 						DockerTestStep newStep = new DockerTestStep(haskellRuntimeTest, title, testCode, expectedValue);
 						session.persist(newStep);
@@ -137,12 +140,47 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				}
 			}
 			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("duplicateMultipleTestSteps".equals(request.getParameter("action"))) {
+			String[] selectedIds = request.getParameterValues("selectedTestStepIds");
+			if (selectedIds != null) {
+				Set<Integer> testStepIds = Arrays.stream(selectedIds).map(s -> Util.parseInteger(s, -1)).filter(i -> i != -1).collect(Collectors.toSet());
+				duplicateTestStepsWithIds(haskellRuntimeTest, session, testStepIds);
+			}
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("deleteMultipleTestSteps".equals(request.getParameter("action"))) {
+			String[] selectedIds = request.getParameterValues("selectedTestStepIds");
+			if (selectedIds != null) {
+				Set<Integer> testStepIds = Arrays.stream(selectedIds).map(s -> Util.parseInteger(s, -1)).filter(i -> i != -1).collect(Collectors.toSet());
+				deleteTestStepsWithIds(haskellRuntimeTest, session, testStepIds);
+			}
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
 		} else {
 			getServletContext().getNamedDispatcher(DockerTestManager.class.getSimpleName()).forward(request, response);
 		}
 	}
 
-	private record DockerTestStepData(String title, String testCode, String expectedValue) {
+	private static class DockerTestStepData {
+		private final String functionNameWithType;
+		private final String testCode;
+		private final String expectedValue;
+
+		private DockerTestStepData(String functionName, String functionType, String testCode, String expectedValue) {
+			this.functionNameWithType = functionName + " :: " + functionType;
+			this.testCode = testCode.replaceAll("\r\n", "\n"); // TODO@CHW wrap in ghci -e '...'
+			this.expectedValue = expectedValue.replaceAll("\r\n", "\n"); // TODO@CHW handle float values
+		}
+
+		private String getFunctionNameWithType() {
+			return functionNameWithType;
+		}
+
+		private String getTestCode() {
+			return testCode;
+		}
+
+		private String getExpectedValue() {
+			return expectedValue;
+		}
 	}
 
 	private void deleteStoredClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) {
@@ -226,13 +264,37 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			}
 
 			for (int i = 0; i < functionCalls.size(); i++) {
-				generatedTestcases.add(new DockerTestStepData(functionName + " :: " + functionType, functionCalls.get(i), expectedValues.get(i)));
+				generatedTestcases.add(new DockerTestStepData(functionName, functionType, functionCalls.get(i), expectedValues.get(i)));
 			}
 		} else {
 			throw new IOException("Invalid identifier id.");
 		}
 
 		return generatedTestcases;
+	}
+
+	private void duplicateTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
+		Transaction tx = session.beginTransaction();
+
+		for (DockerTestStep step : haskellRuntimeTest.getTestSteps()) {
+			if (testStepIds.contains(step.getTeststepid())) {
+				session.persist(new DockerTestStep(haskellRuntimeTest, step.getTitle(), step.getTestcode(), step.getExpect()));
+			}
+		}
+
+		tx.commit();
+	}
+
+	private void deleteTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
+		Transaction tx = session.beginTransaction();
+
+		for (DockerTestStep step : haskellRuntimeTest.getTestSteps()) {
+			if (testStepIds.contains(step.getTeststepid())) {
+				session.remove(step);
+			}
+		}
+
+		tx.commit();
 	}
 
 	private record SubprocessResult(String stdOut, String stdErr, int exitCode, boolean aborted) {
