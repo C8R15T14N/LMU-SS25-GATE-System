@@ -825,11 +825,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return functionCalls;
 	}
 
-	// TODO@CHW return value was list[str|None] in python, double check that this is fine
 	private List<String> computeExpectedValues(List<String> functionCalls, Task task) throws IOException {
-		final String exceptionLinePrefix = "@EXCEPTION@";
-
-		List<String> wrappedFunctionCalls = functionCalls.stream().map(functionCall -> wrapGhciExpressionInCatch(functionCall, exceptionLinePrefix)).toList();
+		List<String> wrappedFunctionCalls = functionCalls.stream().map(this::wrapGhciExpressionInCatchAndTimeout).toList();
 
 		String expectedValueSeparator = "@NEXT-EXPECTED-VALUE@";
 
@@ -840,14 +837,14 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 
 		String[] packagesToEnable = new String[] { "hashable" };
-		String[] modulesToImport = new String[] { "Control.Exception Data.Hashable" };
+		String[] modulesToImport = new String[] { "Control.Exception Data.Hashable System.Timeout" };
 		SubprocessResult result = evaluateWithGhci(packagesToEnable, modulesToImport, true, expressionsToEvaluate.toArray(new String[0]), task, true);
 
 		List<String> expectedValues = new ArrayList<>();
 
 		for (String outputValue : result.stdOut().split(expectedValueSeparator)) {
 			if (!outputValue.trim().isEmpty()) {
-				expectedValues.add(outputValue.startsWith(exceptionLinePrefix) ? null : outputValue);
+				expectedValues.add(outputValue);
 			}
 		}
 
@@ -858,8 +855,9 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return expectedValues;
 	}
 
-	private String wrapGhciExpressionInCatch(String expression, String exceptionLinePrefix) {
-		return String.format("catch (putStr (show (%s))) ((putStr . (\"%s\" ++) . show) :: SomeException -> IO ())", expression, exceptionLinePrefix);
+	private String wrapGhciExpressionInCatchAndTimeout(String expression) {
+		// TODO@CHW: add setup option for timeout of single testcase
+		return String.format("timeout 1000000 (catch (putStr (show (%s))) ((const (putStr \"<EXCEPTION>\")) :: SomeException -> IO ())) >> return ()", expression);
 	}
 
 	private static String prettyPrintFunctionCall(String functionCall) {
