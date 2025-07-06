@@ -164,9 +164,14 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		private final String testCode;
 		private final String expectedValue;
 
-		private DockerTestStepData(String functionName, String functionType, String testCode, String expectedValue) {
+		private DockerTestStepData(String functionName, String functionType, String functionCall, String expectedValue, String filename) {
 			this.functionNameWithType = functionName + " :: " + functionType;
-			this.testCode = testCode.replaceAll("\r\n", "\n"); // TODO@CHW wrap in ghci -e '...'
+
+			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
+			appendGhciEvaluateArgument(testCode, functionCall.replaceAll("\r\n", "\n"));
+			testCode.append(" ").append(filename);
+			this.testCode = testCode.toString();
+
 			this.expectedValue = expectedValue.replaceAll("\r\n", "\n"); // TODO@CHW handle float values
 		}
 
@@ -264,13 +269,20 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			}
 
 			for (int i = 0; i < functionCalls.size(); i++) {
-				generatedTestcases.add(new DockerTestStepData(functionName, functionType, functionCalls.get(i), expectedValues.get(i)));
+				generatedTestcases.add(new DockerTestStepData(functionName, functionType, functionCalls.get(i), expectedValues.get(i), getModelSolutionFilename(haskellRuntimeTest)));
 			}
 		} else {
 			throw new IOException("Invalid identifier id.");
 		}
 
 		return generatedTestcases;
+	}
+
+	private String getModelSolutionFilename(HaskellRuntimeTest haskellRuntimeTest) throws IOException {
+		final Path taskPath = Util.constructPath(Configuration.getInstance().getDataPath(), haskellRuntimeTest.getTask());
+		final Path modelSolutionPath = taskPath.resolve(TaskPath.MODELSOLUTIONFILES.getPathComponent());
+
+		return getModelSolutionFile(modelSolutionPath).getFileName().toString();
 	}
 
 	private void duplicateTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
@@ -345,19 +357,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				Util.recursiveCopy(modelSolutionPath, modelSolutionDir);
 			}
 
-			Path hsFile = null;
-			if (loadModelSolution) {
-				// Expect exactly one .hs file among the modelsolution files -> this file will be used to generate the testcases
-				try (Stream<Path> stream = Files.list(modelSolutionDir)) {
-					List<Path> hsFiles = stream.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".hs")).toList();
-
-					if (hsFiles.size() != 1) {
-						throw new IOException("Expected exactly one .hs file in modelSolutionDir, found " + hsFiles.size() + " files.");
-					} else {
-						hsFile = hsFiles.get(0);
-					}
-				}
-			}
+			Path hsFile = loadModelSolution ? getModelSolutionFile(modelSolutionDir) : null;
 
 			// TODO@CHW: testCode is more complex in DockerTest
 			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
@@ -437,7 +437,20 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private void appendGhciEvaluateArgument(StringBuilder testCode, String argument) {
+	private Path getModelSolutionFile(Path modelSolutionDirectory) throws IOException {
+		// Expect exactly one .hs file among the modelsolution files -> this file will be used to generate the testcases
+		try (Stream<Path> stream = Files.list(modelSolutionDirectory)) {
+			List<Path> hsFiles = stream.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".hs")).toList();
+
+			if (hsFiles.size() != 1) {
+				throw new IOException("Expected exactly one model solution .hs file, found " + hsFiles.size() + " files.");
+			} else {
+				return hsFiles.get(0);
+			}
+		}
+	}
+
+	private static void appendGhciEvaluateArgument(StringBuilder testCode, String argument) {
 		testCode.append(" -e '").append(argument.replace("'", "'\"'\"'").replace("\t", "    ")).append("'");
 	}
 
