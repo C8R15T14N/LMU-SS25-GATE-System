@@ -159,7 +159,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private static class DockerTestStepData {
+	private class DockerTestStepData {
 		private final String functionNameWithType;
 		private final String testCode;
 		private final String expectedValue;
@@ -168,7 +168,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			this.functionNameWithType = functionName + " :: " + functionType;
 
 			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
-			appendGhciEvaluateArgument(testCode, functionCall.replaceAll("\r\n", "\n"));
+			appendGhciEvaluateArgument(testCode, ":m + Control.Exception System.Timeout");
+			appendGhciEvaluateArgument(testCode, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
 			testCode.append(" ").append(filename);
 			this.testCode = testCode.toString();
 
