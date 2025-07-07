@@ -19,6 +19,8 @@
 
 package de.tuclausthal.submissioninterface.testanalyzer;
 
+import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.extractUnescapedGhciExpressionWrappedInCatchAndTimeout;
+
 import java.io.StringReader;
 import java.util.List;
 
@@ -166,15 +168,42 @@ public class CommonErrorAnalyzer {
 			return;
 		}
 
-		// TODO@CHW implement correctly
-
 		final JsonObject testOutputJson = Json.createReader(new StringReader(testResult.getTestOutput())).readObject();
 
-		if (testOutputJson.containsKey("exitCode") && testOutputJson.getInt("exitCode") != 0) {
-			// TODO: maybe modify and use groupTestResultToCommonErrors()
-			// TODO: exitCode != 0 on compile error and on runtime error
-			bindCommonError(testResult, "Failed", "Failed", null);
+		String stepsStr = "";
+		if (testOutputJson.containsKey("steps")) {
+			final JsonArray steps = testOutputJson.getJsonArray("steps");
+
+			StringBuilder stepsStrBuilder = new StringBuilder();
+			for (int i = 0; i < steps.size(); i++) {
+				if (!steps.getJsonObject(i).getBoolean("ok")) {
+					String gotValue = steps.getJsonObject(i).getString("got");
+
+					String testcaseIdentifier = extractUnescapedGhciExpressionWrappedInCatchAndTimeout(test.getTestSteps().get(i).getTestcode());
+					if (testcaseIdentifier == null) {
+						testcaseIdentifier = "unknown case";
+					}
+					stepsStrBuilder.append("Case \"").append(testcaseIdentifier).append("\" failed with \"").append(gotValue).append("\";");
+				}
+			}
+
+			stepsStr = stepsStrBuilder.toString();
 		}
+
+		String keyStr = "";
+		if (testOutputJson.containsKey("stderr") && !testOutputJson.getString("stderr").isEmpty()) {
+			keyStr += "stderr not empty; ";
+		}
+		if (testOutputJson.containsKey("stdout") && testOutputJson.getString("stdout").isEmpty())
+			keyStr += "stdout empty; ";
+		if (testOutputJson.containsKey("exitedCleanly") && testOutputJson.getBoolean("exitedCleanly"))
+			keyStr += "exited cleanly; ";
+		if (testOutputJson.containsKey("missing-tests"))
+			keyStr += "missing tests; ";
+		if (testOutputJson.containsKey("time-exceeded"))
+			keyStr += "time exceeded; ";
+
+		bindCommonError(testResult, stepsStr + keyStr, keyStr, CommonError.Type.RunTimeError);
 	}
 
 	private void groupJUnitTestResults(JUnitTest test, final TestResult testResult) {

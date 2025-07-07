@@ -861,6 +861,20 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return String.format("timeout 1000000 (catch (putStr (show (%s))) ((const (putStr \"<EXCEPTION>\")) :: SomeException -> IO ())) >> return ()", expression);
 	}
 
+	public static String extractUnescapedGhciExpressionWrappedInCatchAndTimeout(String wrappedExpression) {
+		// timeout\s+\d+\s+\(catch \(putStr \(show \(.*?\)\)\s+\(\(const \(putStr \"<EXCEPTION>\"\)\) :: SomeException -> IO \(\)\)\) >> return \(\)
+		String pattern = "timeout\\s+\\d+\\s+\\(catch \\(putStr \\(show \\((.*?)\\)\\)\\s+\\(\\(const \\(putStr \"<EXCEPTION>\"\\)\\) :: SomeException -> IO \\(\\)\\)\\) >> return \\(\\)";
+
+		Pattern regex = Pattern.compile(pattern);
+		Matcher matcher = regex.matcher(wrappedExpression);
+
+		if (matcher.find()) {
+			return matcher.group(1).replace("'\"'\"'", "'");
+		} else {
+			return null;
+		}
+	}
+
 	private static String prettyPrintFunctionCall(String functionCall) {
 		return functionCall.replaceAll("\\(let cyclicIntMap .*? let randomFunction .*? in randomFunction\\)", "<random function>");
 	}

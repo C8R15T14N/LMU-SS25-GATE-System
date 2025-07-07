@@ -497,7 +497,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-create table commonerrors (errorid integer not null auto_increment, commonerrorname varchar(255) not null, title varchar(255) not null, type tinyint(4), testid integer not null, primary key (errorid)) engine=InnoDB;
+create table commonerrors (errorid integer not null auto_increment, commonerrorname longtext not null, title longtext not null, type tinyint(4), testid integer not null, primary key (errorid)) engine=InnoDB;
 create table testresults_commonerror (errorid integer not null, testresultid integer not null, primary key (errorid, testresultid)) engine=InnoDB;
 alter table commonerrors add constraint FK84b477b3adpufhy6yca79d79r foreign key (testid) references tests (id) on delete cascade;
 alter table testresults_commonerror add constraint FK787leerpp7s7yak6btbhtbh48 foreign key (testresultid) references testresults (id);

@@ -186,3 +186,7 @@ CREATE TABLE `haskellruntimetestidentifier`
 
 ALTER TABLE IF EXISTS `haskellruntimetestidentifier`
     ADD CONSTRAINT FKimd1t2tucxm6cy4b7l1vxj7b2 FOREIGN KEY (`testid`) REFERENCES `tests` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS `commonerrors`
+    MODIFY COLUMN `title` longtext NOT NULL,
+    MODIFY COLUMN `commonerrorname` longtext NOT NULL;
