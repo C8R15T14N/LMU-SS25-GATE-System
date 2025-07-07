@@ -40,6 +40,7 @@ import de.tuclausthal.submissioninterface.persistence.dao.DAOFactory;
 import de.tuclausthal.submissioninterface.persistence.dao.PointGivenDAOIf;
 import de.tuclausthal.submissioninterface.persistence.dao.SubmissionDAOIf;
 import de.tuclausthal.submissioninterface.persistence.datamodel.DockerTest;
+import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTest;
 import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellSyntaxTest;
 import de.tuclausthal.submissioninterface.persistence.datamodel.JavaAdvancedIOTest;
 import de.tuclausthal.submissioninterface.persistence.datamodel.MCOption;
@@ -65,6 +66,7 @@ import de.tuclausthal.submissioninterface.servlets.controller.ShowMarkHistory;
 import de.tuclausthal.submissioninterface.servlets.controller.ShowSubmission;
 import de.tuclausthal.submissioninterface.servlets.controller.ShowUser;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowDockerTestResult;
+import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellRuntimeTestResult;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellSyntaxTestResult;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowJavaAdvancedIOTestResult;
 import de.tuclausthal.submissioninterface.tasktypes.ClozeTaskType;
@@ -322,6 +324,9 @@ public class ShowSubmissionView extends HttpServlet {
 					} else if (testResult.getTest() instanceof HaskellSyntaxTest hst) {
 						out.println("<br>");
 						ShowHaskellSyntaxTestResult.printTestResults(out, hst, testResult.getTestOutput(), false, javaScript);
+					} else if (testResult.getTest() instanceof HaskellRuntimeTest hrt) {
+						out.println("<br>");
+						ShowHaskellRuntimeTestResult.printTestResults(out, hrt, testResult.getTestOutput(), false, javaScript);
 					} else if (testResult.getTest() instanceof DockerTest dt) {
 						out.println("<br>");
 						ShowDockerTestResult.printTestResults(out, dt, testResult.getTestOutput(), false, javaScript);
