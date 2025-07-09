@@ -133,7 +133,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 					}
 
 					tx.commit();
-				} catch (IOException e) {
+				} catch (IOException | IllegalArgumentException e) {
 					request.getSession().setAttribute("haskellRuntimeTestGenerateError", e.getMessage());
 				}
 			}
@@ -231,7 +231,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tx.commit();
 	}
 
-	private List<DockerTestStepData> readClassifiedIdentifiersAndGenerateFunctionTestcases(HaskellRuntimeTest haskellRuntimeTest, int identifierId, int numberOfTestSteps) throws IOException {
+	private List<DockerTestStepData> readClassifiedIdentifiersAndGenerateFunctionTestcases(HaskellRuntimeTest haskellRuntimeTest, int identifierId, int numberOfTestSteps) throws IOException, IllegalArgumentException {
 		List<DockerTestStepData> generatedTestcases = new ArrayList<>();
 		HaskellRuntimeTestIdentifier functionIdentifier = null;
 		List<String> arbitraryInstances = new ArrayList<>();
@@ -271,7 +271,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				generatedTestcases.add(new DockerTestStepData(functionName, functionType, functionCalls.get(i), expectedValues.get(i), getModelSolutionFilename(haskellRuntimeTest)));
 			}
 		} else {
-			throw new IOException("Invalid identifier id.");
+			throw new IllegalArgumentException("Invalid identifier id.");
 		}
 
 		return generatedTestcases;
