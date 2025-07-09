@@ -60,6 +60,7 @@ import de.tuclausthal.submissioninterface.persistence.datamodel.Test;
 import de.tuclausthal.submissioninterface.servlets.GATEController;
 import de.tuclausthal.submissioninterface.servlets.RequestAdapter;
 import de.tuclausthal.submissioninterface.servlets.view.MessageView;
+import de.tuclausthal.submissioninterface.testframework.tests.impl.DockerTest;
 import de.tuclausthal.submissioninterface.testframework.tests.impl.ProcessOutputGrabber;
 import de.tuclausthal.submissioninterface.util.Configuration;
 import de.tuclausthal.submissioninterface.util.TaskPath;
@@ -76,9 +77,6 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	@Serial
 	private static final long serialVersionUID = 1L;
 	final static private Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-
-	// TODO@CHW: should safe docker path be part of de.tuclausthal.submissioninterface.util.Configuration? (since it is duplicated from DockerTest)
-	final static private String SAFE_DOCKER_SCRIPT = "/usr/local/bin/safe-docker";
 
 	@Override
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -380,7 +378,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 			List<String> params = new ArrayList<>();
 			params.add("sudo");
-			params.add(SAFE_DOCKER_SCRIPT);
+			params.add(DockerTest.SAFE_DOCKER_SCRIPT);
 			params.add("--timeout=" + safeDockerTimeout);
 			params.add("--dir=" + Util.escapeCommandlineArguments(administrativeDir.toAbsolutePath().toString()));
 			params.add("--");
