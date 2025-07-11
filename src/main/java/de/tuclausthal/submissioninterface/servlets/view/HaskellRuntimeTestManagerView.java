@@ -98,7 +98,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						document.getElementById(actionInputFieldId).value = actionName;
 					}
 					function toggleAllTestcaseSelectionCheckboxes(masterCheckbox, formId) {
-				  		const checkboxes = document.getElementById(formId).getElementsByClassName('testcaseSelectionCheckbox');
+						const checkboxes = document.getElementById(formId).getElementsByClassName('testcaseSelectionCheckbox');
 						Array.from(checkboxes).forEach(cb => {
 							cb.checked = masterCheckbox.checked;
 							toggleTableRowHighlight(cb);
@@ -127,7 +127,23 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					}
 					.selected-row {
 						background-color: #d0e7ff;
-				 	}
+					}
+					.haskell-runtime-error-container {
+						border: 1px solid red;
+					}
+					.haskell-runtime-error-header {
+						background-color: red;
+						color: white;
+						padding: 4px;
+						font-weight: bold;
+						overflow: auto;
+					}
+					.haskell-runtime-error-message {
+						background-color: #ffe5e5;
+						color: red;
+						padding: 4px;
+						overflow: auto;
+					}
 				</style>
 				""");
 
@@ -280,7 +296,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			final int numberOfTestSteps = testStepsGroupedByFunctionNameWithType.get(functionNameWithType).size();
 			final String numberOfTestStepsText = numberOfTestSteps + " " + (numberOfTestSteps == 1 ? "Testschritt" : "Testschritte");
 
-			out.println("<h3>Funktion <code class=\"language-haskell\">" + functionNameWithType + "</code><span style=\"font-weight: normal;\"> (" + numberOfTestStepsText + ")</span></h3>");
+			out.println("<h3>Funktion <code class=\"language-haskell\">" + Util.escapeHTML(functionNameWithType) + "</code><span style=\"font-weight: normal;\"> (" + numberOfTestStepsText + ")</span></h3>");
 
 			String formId = "deleteOrDuplicateMultipleTestStepsForm" + i;
 			String formActionInputFieldId = "deleteOrDuplicateMultipleTestStepsFormAction" + i;
@@ -348,16 +364,16 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		httpSession.removeAttribute(httpSessionAttributeName);
 
 		return (errorMessage == null) ? "" : String.format("""
-				<div style="border: 1px solid red;">
-					<div style="background-color: red; color: white; padding: 4px; font-weight: bold; overflow: auto">
+				<div class="haskell-runtime-error-container">
+					<div class="haskell-runtime-error-header">
 						%1$s
 					</div>
-					<div style="background-color: #ffe5e5; color: red; padding: 4px; overflow: auto;">
+					<div class="haskell-runtime-error-message">
 						<pre>%2$s</pre>
 					</div>
 				</div>
 				<br>
 				<script>alert("%1$s")</script>
-				""", errorTitle, Util.escapeHTML(errorMessage));
+				""", Util.escapeHTML(errorTitle), Util.escapeHTML(errorMessage));
 	}
 }
