@@ -18,18 +18,12 @@
  */
 package de.tuclausthal.submissioninterface.testframework.tests.impl;
 
-import java.util.Random;
-
 import de.tuclausthal.submissioninterface.testframework.executor.TestExecutorTestResult;
 
 public class HaskellSyntaxTest extends DockerTest {
 
-	private static final Random random = new Random();
-	private final String separator;
-
 	public HaskellSyntaxTest(de.tuclausthal.submissioninterface.persistence.datamodel.HaskellSyntaxTest test) {
 		super(test);
-		separator = "#<GATE@" + random.nextLong() + "#@>#";
 	}
 
 	@Override
@@ -48,6 +42,6 @@ public class HaskellSyntaxTest extends DockerTest {
 				for file in *.hs; do
 				  ghci -ignore-dot-ghci -v0 -ferror-spans -fdiagnostics-color=never -Wall -e ":load $file" -e ":quit"
 				done
-				""".formatted(separator);
+				""";
 	}
 }
