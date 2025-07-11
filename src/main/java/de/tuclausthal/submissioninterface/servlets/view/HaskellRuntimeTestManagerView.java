@@ -89,9 +89,9 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					function toggleTableRowHighlight(checkbox) {
 						const row = checkbox.closest('tr');
 						if (checkbox.checked) {
-							row.classList.add('selected-row');
+							row.classList.add('selected-table-row');
 						} else {
-							row.classList.remove('selected-row');
+							row.classList.remove('selected-table-row');
 						}
 					}
 					function setActionInputField(actionInputFieldId, actionName) {
@@ -111,40 +111,6 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						masterCheckbox.checked = allChecked;
 					}
 				</script>
-				<style>
-					span.spinner {
-						width: 0.8em;
-						height: 0.8em;
-						border: 2px solid #ccc;
-						border-top: 2px solid #333;
-						border-radius: 50%;
-						animation: spinLoadingAnimation 0.6s linear infinite;
-						display: inline-block;
-						vertical-align: middle;
-					}
-					@keyframes spinLoadingAnimation {
-						to { transform: rotate(360deg); }
-					}
-					.selected-row {
-						background-color: #d0e7ff;
-					}
-					.haskell-runtime-error-container {
-						border: 1px solid red;
-					}
-					.haskell-runtime-error-header {
-						background-color: red;
-						color: white;
-						padding: 4px;
-						font-weight: bold;
-						overflow: auto;
-					}
-					.haskell-runtime-error-message {
-						background-color: #ffe5e5;
-						color: red;
-						padding: 4px;
-						overflow: auto;
-					}
-				</style>
 				""");
 
 		out.println("<link href=\"" + request.getContextPath() + "/assets/prism/prism.css\" rel=\"stylesheet\">");
@@ -364,11 +330,11 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		httpSession.removeAttribute(httpSessionAttributeName);
 
 		return (errorMessage == null) ? "" : String.format("""
-				<div class="haskell-runtime-error-container">
-					<div class="haskell-runtime-error-header">
+				<div>
+					<div class="error-title">
 						%1$s
 					</div>
-					<div class="haskell-runtime-error-message">
+					<div class="error-message">
 						<pre>%2$s</pre>
 					</div>
 				</div>
