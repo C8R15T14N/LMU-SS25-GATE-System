@@ -166,7 +166,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			this.functionNameWithType = functionName + " :: " + functionType;
 
 			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
-			appendGhciEvaluateArgument(testCode, ":m + Control.Exception System.Timeout");
+			appendGhciEvaluateArgument(testCode, ":m + Control.Exception Data.List Data.Maybe System.Timeout");
 			appendGhciEvaluateArgument(testCode, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
 			testCode.append(" ").append(filename);
 			this.testCode = testCode.toString();
@@ -836,7 +836,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 
 		String[] packagesToEnable = new String[] { "hashable" };
-		String[] modulesToImport = new String[] { "Control.Exception Data.Hashable System.Timeout" };
+		String[] modulesToImport = new String[] { "Control.Exception Data.Hashable Data.List Data.Maybe System.Timeout" };
 		SubprocessResult result = evaluateWithGhci(packagesToEnable, modulesToImport, true, expressionsToEvaluate.toArray(new String[0]), task, true);
 
 		List<String> expectedValues = new ArrayList<>();
@@ -856,12 +856,12 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 	private String wrapGhciExpressionInCatchAndTimeout(String expression) {
 		// TODO@CHW: add setup option for timeout of single testcase
-		return String.format("timeout 1000000 (catch (putStr (show (%s))) ((const (putStr \"<EXCEPTION>\")) :: SomeException -> IO ())) >> return ()", expression);
+		return String.format("timeout 1000000 (catch (putStr (show (%s))) (putStr . (\"EXCEPTION: \" ++) . (let cutCallStack exc = take (fromMaybe (length exc) (findIndex (isPrefixOf \"\\nCallStack (from HasCallStack)\") (tails exc))) exc in cutCallStack) . show :: SomeException -> IO ())) >> return ()", expression);
 	}
 
 	public static String extractUnescapedGhciExpressionWrappedInCatchAndTimeout(String wrappedExpression) {
-		// timeout\s+\d+\s+\(catch \(putStr \(show \(.*?\)\)\s+\(\(const \(putStr \"<EXCEPTION>\"\)\) :: SomeException -> IO \(\)\)\) >> return \(\)
-		String pattern = "timeout\\s+\\d+\\s+\\(catch \\(putStr \\(show \\((.*?)\\)\\)\\s+\\(\\(const \\(putStr \"<EXCEPTION>\"\\)\\) :: SomeException -> IO \\(\\)\\)\\) >> return \\(\\)";
+		// timeout\s+\d+\s+\(catch \(putStr \(show \((.*?)\)\)\)\s+\(putStr\s+\.\s+\("EXCEPTION: "\s+\+\+\)\s+\.\s+\(let cutCallStack exc.*? in cutCallStack\)\s+\.\s+show :: SomeException -> IO \(\)\)\) >> return \(\)
+		String pattern = "timeout\\s+\\d+\\s+\\(catch \\(putStr \\(show \\((.*?)\\)\\)\\)\\s+\\(putStr\\s+\\.\\s+\\(\"EXCEPTION: \"\\s+\\+\\+\\)\\s+\\.\\s+\\(let cutCallStack exc.*? in cutCallStack\\)\\s+\\.\\s+show :: SomeException -> IO \\(\\)\\)\\) >> return \\(\\)";
 
 		Pattern regex = Pattern.compile(pattern);
 		Matcher matcher = regex.matcher(wrappedExpression);
