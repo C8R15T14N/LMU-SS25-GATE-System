@@ -18,6 +18,9 @@
 
 package de.tuclausthal.submissioninterface.servlets.view.fragments;
 
+import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.extractUnescapedGhciExpressionWrappedInCatchAndTimeout;
+import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.prettyPrintCyclicIntMappers;
+
 import java.io.PrintWriter;
 import java.io.StringReader;
 
@@ -31,7 +34,7 @@ import jakarta.json.stream.JsonParsingException;
 import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTest;
 import de.tuclausthal.submissioninterface.util.Util;
 
-public class ShowHaskellRuntimeTestResult {	// similar code in ShowDockerTestResult
+public class ShowHaskellRuntimeTestResult { // similar code in ShowDockerTestResult
 	public static void printTestResults(PrintWriter out, HaskellRuntimeTest haskellRuntimeTest, String testOutput, boolean forStudent, StringBuilder javaScript) {
 		JsonObject object = null;
 		try (JsonReader jsonReader = Json.createReader(new StringReader(testOutput))) {
@@ -61,18 +64,9 @@ public class ShowHaskellRuntimeTestResult {	// similar code in ShowDockerTestRes
 					}
 				}
 			} else if (arr.getValueType().equals(JsonValue.ValueType.ARRAY)) {
-				out.println("<table>");
-				out.println("<thead>");
-				out.println("<tr>");
-				out.println("<th>Test</th>");
-				out.println("<th>Erwartet</th>");
-				out.println("<th>Erhalten</th>");
-				out.println("<th>OK?</th>");
-				out.println("</tr>");
-				out.println("</thead>");
+				out.println("<br>");
 				JsonArray array = arr.asJsonArray();
 				for (int i = 0; i < array.size(); ++i) {
-					// TODO make nicer!
 					JsonObject stepObject = array.get(i).asJsonObject();
 					int foundTest = -1;
 					for (int j = 0; j < haskellRuntimeTest.getTestSteps().size(); ++j) {
@@ -82,15 +76,41 @@ public class ShowHaskellRuntimeTestResult {	// similar code in ShowDockerTestRes
 						}
 					}
 					if (foundTest >= 0) {
+						out.println("<div style=\"max-width: 100%; overflow-x: auto;\">");
+						out.println("<table style=\"width: 100%; overflow-wrap: break-word;\">");
+						out.println("<thead>");
 						out.println("<tr>");
-						out.println("<td>" + Util.escapeHTML(haskellRuntimeTest.getTestSteps().get(foundTest).getTitle()) + "</td>");
-						out.println("<td><pre id=\"exp" + haskellRuntimeTest.getId() + "-" + i + "\">" + Util.escapeHTML(stepObject.getString("expected")) + "</pre></td>");
-						out.println("<td><pre id=\"got" + haskellRuntimeTest.getId() + "-" + i + "\">" + Util.escapeHTML(cleanup(object, stepObject.getString("got"))) + "</pre><pre id=\"diff" + haskellRuntimeTest.getId() + "-" + i + "\" style=\"display:none;\"></pre></td>");
+						out.println("<th style=\"white-space: nowrap; width: auto;\">Testfall</th>");
+						String testCode = haskellRuntimeTest.getTestSteps().get(foundTest).getTestcode();
+						String simplifiedTestCode = extractUnescapedGhciExpressionWrappedInCatchAndTimeout(testCode);
+						if (simplifiedTestCode != null) {
+							simplifiedTestCode = prettyPrintCyclicIntMappers(simplifiedTestCode);
+						}
+						out.println("<th style=\"width: 100%\"><code>" + Util.escapeHTML(simplifiedTestCode != null ? simplifiedTestCode : testCode) + "</code></th>");
+						out.println("</tr>");
+						out.println("</thead>");
+
+						out.println("<tr>");
+						out.println("<td>Erwartet</td>");
+						out.println("<td><pre id=\"exp" + haskellRuntimeTest.getId() + "-" + i + "\"><code>" + Util.escapeHTML(stepObject.getString("expected")) + "</code></pre></td>");
+						out.println("</tr>");
+
+						out.println("<tr>");
+						out.println("<td>Erhalten</td>");
+						out.println("<td><pre id=\"got" + haskellRuntimeTest.getId() + "-" + i + "\"><code>" + Util.escapeHTML(cleanup(object, stepObject.getString("got"))) + "</code></pre><pre id=\"diff" + haskellRuntimeTest.getId() + "-" + i + "\" style=\"display:none;\"></pre></td>");
+						out.println("</tr>");
+
+						out.println("<tr>");
+						out.println("<td>OK?</td>");
 						out.println("<td>" + Util.boolToHTML(stepObject.getBoolean("ok")) + (stepObject.getBoolean("ok") ? "" : " (<a href=\"javascript:dodiff('" + haskellRuntimeTest.getId() + "-" + i + "')\">Diff</a>)") + "</td>");
 						out.println("</tr>");
+
+						out.println("</table>");
+						out.println("</div>");
+						out.println("<br>");
 					}
 				}
-				out.println("</table>");
+
 				boolean wasError = false;
 				if (object.containsKey("missing-tests") && object.getBoolean("missing-tests")) {
 					out.println("<p>Nicht alle Tests wurden durchlaufen.</p>");

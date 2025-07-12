@@ -874,8 +874,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private static String prettyPrintFunctionCall(String functionCall) {
-		return functionCall.replaceAll("\\(let cyclicIntMap .*? let randomFunction .*? in randomFunction\\)", "<random function>");
+	public static String prettyPrintCyclicIntMappers(String functionCall) {
+		return functionCall.replaceAll("\\(let cyclicIntMap.*? let randomFunction.*? in randomFunction\\)", "<random function>");
 	}
 
 	private static class HaskellClassifiedIdentifiers {
