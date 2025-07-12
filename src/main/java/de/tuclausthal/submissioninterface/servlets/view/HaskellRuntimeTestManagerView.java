@@ -155,8 +155,8 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		StringBuilder newtypeOrDatasHtml = new StringBuilder();
 		newtypeOrDatasHtml.append("""
 				<tr>
-					<th colspan="1">Typname</th>
-					<th colspan="4">Typdefinition und <code>Arbitrary</code> Instanz</th>
+					<th style="width: 25%">Typname</th>
+					<th style="width: 75%">Typdefinition und <code>Arbitrary</code> Instanz</th>
 				</tr>
 				""");
 
@@ -180,24 +180,38 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					showNewtypeOrDataTable = true;
 					newtypeOrDatasHtml.append(String.format("""
 							<tr>
-								<td colspan="1"><code class="language-haskell">%1$s</code></td>
-								<td colspan="4">
-									<details style="width: 60vw;">
+								<td style="width: 25%%">
+									<div style="overflow-x: auto; overflow-y: hidden;">
+										<code class="language-haskell">%1$s</code>
+									</div>
+								</td>
+								<td style="width: 75%%">
+									<div style="overflow-x: auto; overflow-y: hidden;">
+									<details style="width: 100%%;">
 										<summary><code class="language-haskell">%2$s</code></summary>
 										<pre style="overflow-x: auto; white-space: pre; max-width: 100%%"><code class="language-haskell">%3$s</code></pre>
 									</details>
+									</div>
 								</td>
 							</tr>
 							""", Util.escapeHTML(identifier.getNewtypeOrDataTypename()), Util.escapeHTML(identifier.getNewtypeOrDataDefinition()), Util.escapeHTML(identifier.getNewtypeOrDataArbitraryInstance())));
-					break; //TODO@CHW: 60vw might not be a good width depending on the page template
+					break;
 				case "function":
 					showFunctionTable = true;
 					functionsHtml.append(String.format("""
 							<tr>
-								<td><code class="language-haskell">%2$s</code></td>
-								<td><code class="language-haskell">%3$s</code></td>
-								<td><code class="language-haskell">%6$s</code></td>
-								<td><code class="language-haskell">%7$s</code></td>
+								<td><div style="overflow-x: auto; overflow-y: hidden;">
+									<code class="language-haskell">%2$s</code>
+								</div></td>
+								<td><div style="overflow-x: auto; overflow-y: hidden;">
+									<code class="language-haskell">%3$s</code>
+								</div></td>
+								<td><div style="overflow-x: auto; overflow-y: hidden;">
+									<code class="language-haskell">%6$s</code>
+								</div></td>
+								<td><div style="overflow-x: auto; overflow-y: hidden;">
+									<code class="language-haskell">%7$s</code>
+								</div></td>
 								<td style="text-align: center;">
 									<form action="%4$s" method="post" id="generateFunctionTestcasesForm%1$s">
 										<input type=hidden name=testid value=%5$s>
@@ -216,17 +230,23 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			}
 		}
 
-		out.println("<table style=\"border: none;\">");
 		if (showNewtypeOrDataTable) {
+			out.println("<div style=\"max-width: 100%; width: 100%; overflow-x: auto;\">");
+			out.println("<table style=\"width: 100%; table-layout: fixed; overflow-wrap: break-word;\">");
 			out.println(newtypeOrDatasHtml);
+			out.println("</table>");
+			out.println("</div>");
 		}
 		if (showNewtypeOrDataTable && showFunctionTable) {
-			out.println("<tr style=\"border: none;\"><td style=\"height: 12px; border: none;\" colspan=\"100%\"></td></tr>");
+			out.println("<br>");
 		}
 		if (showFunctionTable) {
+			out.println("<div style=\"max-width: 100%; overflow-x: auto;\">");
+			out.println("<table style=\"width: 100%; table-layout: fixed; overflow-wrap: break-word;\">");
 			out.println(functionsHtml);
+			out.println("</table>");
+			out.println("</div>");
 		}
-		out.println("</table>");
 		if (showNewtypeOrDataTable || showFunctionTable) {
 			out.println("<br>");
 		}
@@ -270,13 +290,14 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			out.println(String.format("""
 					<form action="%1$s" method="post" id="%2$s">
 						<input type="hidden" name="testid" value="%3$s">
-						<table width="100%%">
+						<div style="max-width: 100%%; overflow-x: auto;">
+						<table style="width: 100%%; table-layout: fixed;">
 							<thead>
 								<tr>
-									<th style="width: 1%%; white-space: nowrap;">
+									<th style="width: 2em; white-space: nowrap;">
 										<input type="checkbox" class="testcaseSelectionMasterCheckbox" onchange="toggleAllTestcaseSelectionCheckboxes(this, '%2$s')">
 									</th>
-									<th>Testcode</th>
+									<th style="width: 66%%">Testcode</th>
 									<th>Erwartete Ausgabe</th>
 								</tr>
 							</thead>
@@ -285,15 +306,19 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			for (DockerTestStep step : testStepsGroupedByFunctionNameWithType.get(functionNameWithType)) {
 				out.println(String.format("""
 						<tr>
-							<td style="width: 1%%; white-space: nowrap;">
+							<td style="width: 2em; white-space: nowrap; text-align: center;">
 								<input type="checkbox"
 									   class="testcaseSelectionCheckbox"
 						  		       name="selectedTestStepIds"
 						  		       value="%3$s"
 						  		       onchange="syncTestcaseSelectionMasterCheckbox('%4$s'); toggleTableRowHighlight(this)">
 							</td>
-							<td><code class="language-haskell">%1$s</code></td>
-							<td><code class="language-haskell">%2$s</code></td>
+							<td><div style="overflow-x: auto; overflow-y: hidden;">
+								<code class="language-haskell">%1$s</code>
+							</div></td>
+							<td><div style="overflow-x: auto; overflow-y: hidden;">
+								<code class="language-haskell">%2$s</code>
+							</div></td>
 						</tr>
 						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId));
 			}
@@ -317,6 +342,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					""", formId, formActionInputFieldId));
 			// TODO@CHW: add button "Duplikate in Selektion entfernen"
 			out.println("</table>");
+			out.println("</div>");
 			out.println("</form>");
 			out.println("<br>");
 		}
