@@ -37,6 +37,7 @@ import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTe
 import de.tuclausthal.submissioninterface.persistence.datamodel.HaskellRuntimeTestIdentifier;
 import de.tuclausthal.submissioninterface.servlets.GATEView;
 import de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager;
+import de.tuclausthal.submissioninterface.servlets.controller.PerformTest;
 import de.tuclausthal.submissioninterface.servlets.controller.TaskManager;
 import de.tuclausthal.submissioninterface.template.Template;
 import de.tuclausthal.submissioninterface.template.TemplateFactory;
@@ -273,7 +274,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		List<String> sortedKeys = testStepsGroupedByFunctionNameWithType.keySet().stream().sorted().toList();
 
 		if (!sortedKeys.isEmpty()) {
-			out.println("<h2>Testschritte bearbeiten</h2>");
+			out.println("<h2>Testschritte bearbeiten <span style=\"font-weight: normal;\">(<a onclick=\"return sendAsPost(this, 'Wirklich mit Musterlösung testen?')\" href=\"" + Util.generateHTMLLink(PerformTest.class.getSimpleName() + "?modelsolution=true&testid=" + test.getId(), response) + "\">mit Musterlösung testen</a>)</span></h2>");
 		}
 
 		for (int i = 0; i < sortedKeys.size(); i++) {
