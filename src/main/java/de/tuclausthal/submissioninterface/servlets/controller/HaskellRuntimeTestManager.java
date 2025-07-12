@@ -166,7 +166,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			this.functionNameWithType = functionName + " :: " + functionType;
 
 			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
-			appendGhciEvaluateArgument(testCode, ":m + Control.Exception Data.List Data.Maybe System.Timeout");
+			appendGhciEvaluateArgument(testCode, ":set -package hashable");
+			appendGhciEvaluateArgument(testCode, ":m + Control.Exception Data.Hashable Data.List Data.Maybe System.Timeout");
 			appendGhciEvaluateArgument(testCode, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
 			testCode.append(" ").append(filename);
 			this.testCode = testCode.toString();
