@@ -168,8 +168,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			StringBuilder testCodeStringBuilder = new StringBuilder("ghci -XInstanceSigs");
 			appendGhciEvaluateArgument(testCodeStringBuilder, ":set -package hashable");
 			appendGhciEvaluateArgument(testCodeStringBuilder, ":m + Control.Exception Data.Hashable Data.List Data.Maybe System.Timeout");
+			appendGhciEvaluateArgument(testCodeStringBuilder, ":load " + filename);
 			appendGhciEvaluateArgument(testCodeStringBuilder, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
-			testCodeStringBuilder.append(" ").append(filename);
 			this.testCode = testCodeStringBuilder.toString();
 
 			this.expectedValue = expectedValue.replaceAll("\r\n", "\n"); // TODO@CHW handle float values
