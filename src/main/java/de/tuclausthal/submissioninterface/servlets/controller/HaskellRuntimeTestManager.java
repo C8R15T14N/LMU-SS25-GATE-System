@@ -157,7 +157,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private class DockerTestStepData {
+	private static class DockerTestStepData {
 		private final String functionNameWithType;
 		private final String testCode;
 		private final String expectedValue;
@@ -188,7 +188,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private void deleteStoredClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) {
+	private static void deleteStoredClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) {
 		Transaction tx = session.beginTransaction();
 
 		for (HaskellRuntimeTestIdentifier identifier : haskellRuntimeTest.getIdentifiers()) {
@@ -198,7 +198,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tx.commit();
 	}
 
-	private void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) throws IOException {
+	private static void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) throws IOException {
 		List<String> haskellIdentifiers = browseModelSolution(haskellRuntimeTest.getTask());
 		HaskellClassifiedIdentifiers haskellClassifiedIdentifiers = classifyHaskellIdentifiers(haskellIdentifiers);
 
@@ -232,7 +232,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tx.commit();
 	}
 
-	private List<DockerTestStepData> readClassifiedIdentifiersAndGenerateFunctionTestcases(HaskellRuntimeTest haskellRuntimeTest, int identifierId, int numberOfTestSteps) throws IOException, IllegalArgumentException {
+	private static List<DockerTestStepData> readClassifiedIdentifiersAndGenerateFunctionTestcases(HaskellRuntimeTest haskellRuntimeTest, int identifierId, int numberOfTestSteps) throws IOException, IllegalArgumentException {
 		List<DockerTestStepData> generatedTestcases = new ArrayList<>();
 		HaskellRuntimeTestIdentifier functionIdentifier = null;
 		List<String> arbitraryInstances = new ArrayList<>();
@@ -278,14 +278,14 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return generatedTestcases;
 	}
 
-	private String getModelSolutionFilename(HaskellRuntimeTest haskellRuntimeTest) throws IOException {
+	private static String getModelSolutionFilename(HaskellRuntimeTest haskellRuntimeTest) throws IOException {
 		final Path taskPath = Util.constructPath(Configuration.getInstance().getDataPath(), haskellRuntimeTest.getTask());
 		final Path modelSolutionPath = taskPath.resolve(TaskPath.MODELSOLUTIONFILES.getPathComponent());
 
 		return getModelSolutionFile(modelSolutionPath).getFileName().toString();
 	}
 
-	private void duplicateTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
+	private static void duplicateTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
 		Transaction tx = session.beginTransaction();
 
 		for (DockerTestStep step : haskellRuntimeTest.getTestSteps()) {
@@ -297,7 +297,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tx.commit();
 	}
 
-	private void deleteTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
+	private static void deleteTestStepsWithIds(HaskellRuntimeTest haskellRuntimeTest, Session session, Set<Integer> testStepIds) {
 		Transaction tx = session.beginTransaction();
 
 		for (DockerTestStep step : haskellRuntimeTest.getTestSteps()) {
@@ -328,7 +328,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	 * @param task Task, for which the testcases should be generated based on the model solution
 	 * @return result of the subprocess
 	 */
-	private SubprocessResult evaluateWithGhci(String[] packagesToEnable, String[] modulesToImport, boolean loadModelSolution, String[] expressionsToEvaluate, Task task, boolean throwIOExceptionOnNonZeroExitCode) throws IOException {
+	private static SubprocessResult evaluateWithGhci(String[] packagesToEnable, String[] modulesToImport, boolean loadModelSolution, String[] expressionsToEvaluate, Task task, boolean throwIOExceptionOnNonZeroExitCode) throws IOException {
 		if (packagesToEnable == null)
 			packagesToEnable = new String[0];
 		if (modulesToImport == null)
@@ -437,7 +437,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private Path getModelSolutionFile(Path modelSolutionDirectory) throws IOException {
+	private static Path getModelSolutionFile(Path modelSolutionDirectory) throws IOException {
 		// Expect exactly one .hs file among the modelsolution files -> this file will be used to generate the testcases
 		try (Stream<Path> stream = Files.list(modelSolutionDirectory)) {
 			List<Path> hsFiles = stream.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".hs")).toList();
@@ -454,12 +454,12 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		testCode.append(" -e '").append(argument.replace("'", "'\"'\"'").replace("\t", "    ")).append("'");
 	}
 
-	private List<String> browseModelSolution(Task task) throws IOException {
+	private static List<String> browseModelSolution(Task task) throws IOException {
 		SubprocessResult result = evaluateWithGhci(null, null, true, new String[] { ":browse" }, task, true);
 		return splitLinesButKeepMultilines(result.stdOut());
 	}
 
-	private List<String> splitLinesButKeepMultilines(String resultStdout) {
+	private static List<String> splitLinesButKeepMultilines(String resultStdout) {
 		List<String> haskellIdentifiers = new ArrayList<>();
 
 		for (String line : resultStdout.split("\\R")) {
@@ -478,7 +478,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return haskellIdentifiers;
 	}
 
-	private HaskellClassifiedIdentifiers classifyHaskellIdentifiers(List<String> haskellIdentifiers) {
+	private static HaskellClassifiedIdentifiers classifyHaskellIdentifiers(List<String> haskellIdentifiers) {
 		HaskellClassifiedIdentifiers classifiedIdentifiers = new HaskellClassifiedIdentifiers();
 
 		for (String line : haskellIdentifiers) {
@@ -496,7 +496,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return classifiedIdentifiers;
 	}
 
-	private String getGhciDefaultTypeSignature(Task task, String identifierName) throws IOException {
+	private static String getGhciDefaultTypeSignature(Task task, String identifierName) throws IOException {
 		SubprocessResult result = evaluateWithGhci(null, null, true, new String[] { ":type +d " + identifierName }, task, true);
 
 		String defaultTypeSignature = normalizeTypeSignature(result.stdOut().split("::")[1].trim());
@@ -507,7 +507,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		}
 	}
 
-	private String normalizeTypeSignature(String typeSignature) {
+	private static String normalizeTypeSignature(String typeSignature) {
 		typeSignature = typeSignature.replace("\n", "");
 		typeSignature = typeSignature.replaceAll("\\s*->\\s*", " -> ");
 		return typeSignature.trim();
@@ -568,7 +568,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	private record TestcaseWithTypes(List<TestcaseSingleParameterWithType> testcaseParametersWithTypes) {
 	}
 
-	private List<TestcaseWithTypes> generateQuickcheckFunctionTestcases(Task task, List<String> functionParameterTypes, List<String> arbitraryInstances, int numberOfTestcases) throws IOException {
+	private static List<TestcaseWithTypes> generateQuickcheckFunctionTestcases(Task task, List<String> functionParameterTypes, List<String> arbitraryInstances, int numberOfTestcases) throws IOException {
 		if (functionParameterTypes.isEmpty()) {
 			return List.of();
 		}
@@ -749,7 +749,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return testcasesWithTypes;
 	}
 
-	private List<String> withConstrainedPrimitiveTypes(List<String> parameterTypes) {
+	private static List<String> withConstrainedPrimitiveTypes(List<String> parameterTypes) {
 		Map<String, String> replacementDict = Map.of(HaskellPrimitiveType.Char.toString(), HaskellConstrainedPrimitiveType.Char_OnlySafeAscii.toString(), HaskellPrimitiveType.String.toString(), HaskellConstrainedPrimitiveType.String_OnlySafeAscii.toString());
 
 		String patternString = String.join("|", replacementDict.keySet().stream().map(key -> "(?<![A-Za-z])" + Pattern.quote(key) + "(?![A-Za-z0-9_])").toList());
@@ -776,7 +776,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return constrainedTypes;
 	}
 
-	private List<String> withCyclicIntMapTypes(List<String> parameterTypes, String cyclicIntMapConstructor) {
+	private static List<String> withCyclicIntMapTypes(List<String> parameterTypes, String cyclicIntMapConstructor) {
 		List<String> cyclicIntMapTypes = new ArrayList<>();
 
 		for (String parameterType : parameterTypes) {
@@ -793,7 +793,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return cyclicIntMapTypes;
 	}
 
-	private String embedCyclicIntMapInRandomFunction(int numberOfParameters, String cyclicIntMapDefinition) {
+	private static String embedCyclicIntMapInRandomFunction(int numberOfParameters, String cyclicIntMapDefinition) {
 		String cyclicIntMapName = cyclicIntMapDefinition.split("\\s+")[0].trim();
 
 		List<String> parameters = new ArrayList<>();
@@ -804,7 +804,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return String.format("(let %s in let randomFunction %s = (%s . hash . show) (%s) in randomFunction)", cyclicIntMapDefinition, String.join(" ", parameters), cyclicIntMapName, String.join(", ", parameters));
 	}
 
-	private List<String> generateFunctionCalls(String functionName, List<TestcaseWithTypes> testcasesWithTypes) {
+	private static List<String> generateFunctionCalls(String functionName, List<TestcaseWithTypes> testcasesWithTypes) {
 		List<String> functionCalls = new ArrayList<>();
 
 		for (TestcaseWithTypes testcaseWithTypes : testcasesWithTypes) {
@@ -825,8 +825,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return functionCalls;
 	}
 
-	private List<String> computeExpectedValues(List<String> functionCalls, Task task) throws IOException {
-		List<String> wrappedFunctionCalls = functionCalls.stream().map(this::wrapGhciExpressionInCatchAndTimeout).toList();
+	private static List<String> computeExpectedValues(List<String> functionCalls, Task task) throws IOException {
+		List<String> wrappedFunctionCalls = functionCalls.stream().map(HaskellRuntimeTestManager::wrapGhciExpressionInCatchAndTimeout).toList();
 
 		String expectedValueSeparator = "@NEXT-EXPECTED-VALUE@";
 
@@ -855,7 +855,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return expectedValues;
 	}
 
-	private String wrapGhciExpressionInCatchAndTimeout(String expression) {
+	private static String wrapGhciExpressionInCatchAndTimeout(String expression) {
 		// TODO@CHW: add setup option for timeout of single testcase
 		return String.format("timeout 1000000 (catch (putStr (show (%s))) (putStr . (\"EXCEPTION: \" ++) . (let cutCallStack exc = take (fromMaybe (length exc) (findIndex (isPrefixOf \"\\nCallStack (from HasCallStack)\") (tails exc))) exc in cutCallStack) . show :: SomeException -> IO ())) >> return ()", expression);
 	}
