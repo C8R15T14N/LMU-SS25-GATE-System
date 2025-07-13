@@ -138,6 +138,46 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				}
 			}
 			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("editSingleTestStep".equals(request.getParameter("action"))) {
+			String[] selectedIds = request.getParameterValues("selectedTestStepIds");
+
+			if (selectedIds != null) {
+				Set<Integer> testStepIds = Arrays.stream(selectedIds).map(s -> Util.parseInteger(s, -1)).filter(i -> i != -1).collect(Collectors.toSet());
+
+				if (testStepIds.size() == 1) {
+					int testStepId = testStepIds.iterator().next();
+					String userEnteredFunctionCall = request.getParameter("userEnteredFunctionCall" + testStepId);
+
+					if (userEnteredFunctionCall != null) {
+						try {
+							userEnteredFunctionCall = userEnteredFunctionCall.replaceAll("\r\n", "\n");
+
+							List<String> expectedValues = computeExpectedValues(List.of(userEnteredFunctionCall), haskellRuntimeTest.getTask());
+							if (expectedValues.size() != 1) {
+								throw new AssertionError(String.format("Expected values: %d (only one function call)", expectedValues.size()));
+							}
+							String expectedValue = expectedValues.get(0);
+
+							DockerTestStep stepToEdit = null;
+							for (DockerTestStep step : haskellRuntimeTest.getTestSteps()) {
+								if (step.getTeststepid() == testStepId) {
+									stepToEdit = step;
+									break;
+								}
+							}
+							if (stepToEdit != null) {
+								Transaction tx = session.beginTransaction();
+								stepToEdit.setTestcode(DockerTestStepData.getTestcodeFromFunctionCallAndFilename(userEnteredFunctionCall, getModelSolutionFilename(haskellRuntimeTest)));
+								stepToEdit.setExpect(DockerTestStepData.getExpectedValueFromGeneratorExpectedValue(expectedValue));
+								tx.commit();
+							}
+						} catch (IOException | AssertionError e) {
+							request.getSession().setAttribute("haskellRuntimeTestEditTestcaseError", e.getMessage());
+						}
+					}
+				}
+			}
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
 		} else if ("duplicateMultipleTestSteps".equals(request.getParameter("action"))) {
 			String[] selectedIds = request.getParameterValues("selectedTestStepIds");
 			if (selectedIds != null) {
@@ -164,15 +204,21 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 		private DockerTestStepData(String functionName, String functionType, String functionCall, String expectedValue, String filename) {
 			this.functionNameWithType = functionName + " :: " + functionType;
+			this.testCode = getTestcodeFromFunctionCallAndFilename(functionCall, filename);
+			this.expectedValue = getExpectedValueFromGeneratorExpectedValue(expectedValue);
+		}
 
+		private static String getTestcodeFromFunctionCallAndFilename(String functionCall, String filename) {
 			StringBuilder testCodeStringBuilder = new StringBuilder("ghci -XInstanceSigs");
 			appendGhciEvaluateArgument(testCodeStringBuilder, ":set -package hashable");
 			appendGhciEvaluateArgument(testCodeStringBuilder, ":m + Control.Exception Data.Hashable Data.List Data.Maybe System.Timeout");
 			appendGhciEvaluateArgument(testCodeStringBuilder, ":load " + filename);
-			appendGhciEvaluateArgument(testCodeStringBuilder, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
-			this.testCode = testCodeStringBuilder.toString();
+			appendGhciEvaluateArgument(testCodeStringBuilder, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n").strip()));
+			return testCodeStringBuilder.toString();
+		}
 
-			this.expectedValue = expectedValue.replaceAll("\r\n", "\n"); // TODO@CHW handle float values
+		private static String getExpectedValueFromGeneratorExpectedValue(String expectedValue) {
+			return expectedValue.replaceAll("\r\n", "\n"); // TODO@CHW handle float values
 		}
 
 		private String getFunctionNameWithType() {

@@ -72,6 +72,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		if (httpSession != null) {
 			out.println(errorBoxIfErrorOccurred(httpSession, "haskellRuntimeTestBrowseError", "Beim Analysieren der Musterlösung ist ein Fehler aufgetreten"));
 			out.println(errorBoxIfErrorOccurred(httpSession, "haskellRuntimeTestGenerateError", "Beim Generieren der Testfälle ist ein Fehler aufgetreten"));
+			out.println(errorBoxIfErrorOccurred(httpSession, "haskellRuntimeTestEditTestcaseError", "Beim Bearbeiten des Testfalls ist ein Fehler aufgetreten"));
 		}
 
 		out.println("""
@@ -121,14 +122,16 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						const masterCheckbox = document.getElementById(formId).getElementsByClassName('testcaseSelectionMasterCheckbox')[0];
 						Array.from(checkboxes).forEach(cb => {
 							cb.checked = false;
+							cb.disabled = true;
 							toggleTableRowHighlight(cb);
 						});
 						masterCheckbox.checked = false;
-						const testcaseSelectionCheckbox = document.getElementById(testcaseSelectionCheckboxId);
-						testcaseSelectionCheckbox.checked = true;
-						toggleTableRowHighlight(testcaseSelectionCheckbox);
-						Array.from(checkboxes).forEach(cb => cb.disabled = true);
 						masterCheckbox.disabled = true;
+						const testcaseSelectionCheckbox = document.getElementById(testcaseSelectionCheckboxId);
+						testcaseSelectionCheckbox.disabled = false;
+						testcaseSelectionCheckbox.checked = true;
+						testcaseSelectionCheckbox.style.pointerEvents = 'none';
+						toggleTableRowHighlight(testcaseSelectionCheckbox);
 					}
 					function leaveEditMode(formId, noEditModeDivId, editModeDivId) {
 						setElementWithIdVisible(noEditModeDivId, true);
@@ -138,6 +141,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						Array.from(checkboxes).forEach(cb => {
 							cb.checked = false;
 							cb.disabled = false;
+							cb.style.pointerEvents = 'auto';
 							toggleTableRowHighlight(cb);
 						});
 						masterCheckbox.checked = false;
@@ -421,10 +425,14 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 									</div>
 								</div>
 								<div id="%11$s" style="display: none;">
-									<textarea style="width: 99%%; resize: none" rows="8">%5$s</textarea>
+									<textarea name="userEnteredFunctionCall%3$s" style="width: 99%%; resize: none" rows="8">%5$s</textarea>
 									<div style="text-align: center">
 										<a href="#" onclick="leaveEditMode('%4$s', '%10$s', '%11$s'); return false;">abbrechen</a>
-										<button>speichern</button>
+										<button class="generatorCaller"
+												type="button"
+												onclick="setActionInputField('%13$s', 'editSingleTestStep'); submitGeneratorForm('%4$s', this)">
+												speichern
+										</button>
 									</div>
 								</div>
 							</td>
@@ -432,7 +440,7 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 								<code class="language-haskell">%2$s</code>
 							</div></td>
 						</tr>
-						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId, Util.escapeHTML(testcodeWithoutWrapperCode), Util.escapeHTML(testcodeWithoutWrapperCodeWithoutCyclicIntMappers), fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass, noEditModeDivId, editModeDivId, testcaseSelectionCheckboxId));
+						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId, Util.escapeHTML(testcodeWithoutWrapperCode), Util.escapeHTML(testcodeWithoutWrapperCodeWithoutCyclicIntMappers), fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass, noEditModeDivId, editModeDivId, testcaseSelectionCheckboxId, formActionInputFieldId));
 			}
 
 			out.println(String.format("""
