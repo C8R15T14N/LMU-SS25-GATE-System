@@ -165,12 +165,12 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		private DockerTestStepData(String functionName, String functionType, String functionCall, String expectedValue, String filename) {
 			this.functionNameWithType = functionName + " :: " + functionType;
 
-			StringBuilder testCode = new StringBuilder("ghci -XInstanceSigs");
-			appendGhciEvaluateArgument(testCode, ":set -package hashable");
-			appendGhciEvaluateArgument(testCode, ":m + Control.Exception Data.Hashable Data.List Data.Maybe System.Timeout");
-			appendGhciEvaluateArgument(testCode, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
-			testCode.append(" ").append(filename);
-			this.testCode = testCode.toString();
+			StringBuilder testCodeStringBuilder = new StringBuilder("ghci -XInstanceSigs");
+			appendGhciEvaluateArgument(testCodeStringBuilder, ":set -package hashable");
+			appendGhciEvaluateArgument(testCodeStringBuilder, ":m + Control.Exception Data.Hashable Data.List Data.Maybe System.Timeout");
+			appendGhciEvaluateArgument(testCodeStringBuilder, wrapGhciExpressionInCatchAndTimeout(functionCall.replaceAll("\r\n", "\n")));
+			testCodeStringBuilder.append(" ").append(filename);
+			this.testCode = testCodeStringBuilder.toString();
 
 			this.expectedValue = expectedValue.replaceAll("\r\n", "\n"); // TODO@CHW handle float values
 		}
