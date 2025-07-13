@@ -274,7 +274,9 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 		List<String> sortedKeys = testStepsGroupedByFunctionNameWithType.keySet().stream().sorted().toList();
 
 		if (!sortedKeys.isEmpty()) {
-			out.println("<h2>Testschritte bearbeiten <span style=\"font-weight: normal;\">(<a onclick=\"return sendAsPost(this, 'Wirklich mit Musterlösung testen?')\" href=\"" + Util.generateHTMLLink(PerformTest.class.getSimpleName() + "?modelsolution=true&testid=" + test.getId(), response) + "\">mit Musterlösung testen</a>)</span></h2>");
+			final int numberOfTestSteps = test.getTestSteps().size();
+			final String numberOfTestStepsText = numberOfTestSteps + " " + (numberOfTestSteps == 1 ? "Testschritt" : "Testschritte");
+			out.println("<h2>Testschritte bearbeiten <span style=\"font-weight: normal;\">(" + numberOfTestStepsText + ", <a onclick=\"return sendAsPost(this, 'Wirklich mit Musterlösung testen?')\" href=\"" + Util.generateHTMLLink(PerformTest.class.getSimpleName() + "?modelsolution=true&testid=" + test.getId(), response) + "\">mit Musterlösung testen</a>)</span></h2>");
 		}
 
 		for (int i = 0; i < sortedKeys.size(); i++) {
