@@ -218,7 +218,7 @@ public class TestManagerAddTestFormView extends HttpServlet {
 			out.println("</tr>");
 			out.println("<tr>");
 			out.println("<th>Timeout (s):</th>");
-			out.println("<td><input type=text name=timeout value=\"15\" required pattern=\"[0-9]+\"></td>");
+			out.println("<td><input type=text name=timeout value=\"45\" required pattern=\"[0-9]+\"></td>");
 			out.println("</tr>");
 			out.println("<tr>");
 			out.println("<th>Studierenden Test-Details anzeigen:</th>");

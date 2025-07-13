@@ -338,7 +338,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 
 		final Path taskPath = Util.constructPath(Configuration.getInstance().getDataPath(), task);
 		final Path modelSolutionPath = taskPath.resolve(TaskPath.MODELSOLUTIONFILES.getPathComponent());
-		final int safeDockerTimeout = 30;
+		final int safeDockerTimeout = 45;
 
 		Path generatorTempDir = null;
 		try {
