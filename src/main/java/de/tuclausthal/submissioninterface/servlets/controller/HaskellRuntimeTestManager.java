@@ -594,8 +594,6 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		// In ein Tuple-String umwandeln
 		String parameterTypeTuple = "(" + String.join(", ", parameterTypesTupleValues) + ")";
 
-		LOG.info("- PARAMS TUPLE:\t\t" + parameterTypeTuple);
-
 		String placeholderType = String.format("""
 				data %1$s = %1$s
 				
@@ -772,7 +770,6 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			constrainedTypes.add(sb.toString());
 		}
 
-		LOG.info("- PARAMS (constr.):\t" + constrainedTypes);
 		return constrainedTypes;
 	}
 
