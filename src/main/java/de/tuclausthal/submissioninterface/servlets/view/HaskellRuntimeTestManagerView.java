@@ -114,6 +114,35 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						const allChecked = Array.from(checkboxes).every(cb => cb.checked);
 						masterCheckbox.checked = allChecked;
 					}
+					function enterEditMode(formId, noEditModeDivId, editModeDivId, testcaseSelectionCheckboxId) {
+						setElementWithIdVisible(noEditModeDivId, false);
+						setElementWithIdVisible(editModeDivId, true);
+						const checkboxes = document.getElementById(formId).getElementsByClassName('testcaseSelectionCheckbox');
+						const masterCheckbox = document.getElementById(formId).getElementsByClassName('testcaseSelectionMasterCheckbox')[0];
+						Array.from(checkboxes).forEach(cb => {
+							cb.checked = false;
+							toggleTableRowHighlight(cb);
+						});
+						masterCheckbox.checked = false;
+						const testcaseSelectionCheckbox = document.getElementById(testcaseSelectionCheckboxId);
+						testcaseSelectionCheckbox.checked = true;
+						toggleTableRowHighlight(testcaseSelectionCheckbox);
+						Array.from(checkboxes).forEach(cb => cb.disabled = true);
+						masterCheckbox.disabled = true;
+					}
+					function leaveEditMode(formId, noEditModeDivId, editModeDivId) {
+						setElementWithIdVisible(noEditModeDivId, true);
+						setElementWithIdVisible(editModeDivId, false);
+						const checkboxes = document.getElementById(formId).getElementsByClassName('testcaseSelectionCheckbox');
+						const masterCheckbox = document.getElementById(formId).getElementsByClassName('testcaseSelectionMasterCheckbox')[0];
+						Array.from(checkboxes).forEach(cb => {
+							cb.checked = false;
+							cb.disabled = false;
+							toggleTableRowHighlight(cb);
+						});
+						masterCheckbox.checked = false;
+						masterCheckbox.disabled = false;
+					}
 					function updateTestcodeSimplification(fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass, showGhciEmbeddingCheckboxId, showRandomFunctionsCheckboxId) {
 						const showGhciEmbedding = document.getElementById(showGhciEmbeddingCheckboxId).checked;
 						const showRandomFunctions = document.getElementById(showRandomFunctionsCheckboxId).checked;
@@ -132,6 +161,9 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						} else {
 							Array.from(document.getElementsByClassName(simpleTestcodeClass)).forEach(elem => elem.style.display = 'block');
 						}
+					}
+					function setElementWithIdVisible(elementId, visible) {
+						document.getElementById(elementId).style.display = visible ? 'block' : 'none';
 					}
 				</script>
 				""");
@@ -359,31 +391,48 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 
 				String testcodeWithoutWrapperCodeWithoutCyclicIntMappers = prettyPrintCyclicIntMappers(testcodeWithoutWrapperCode);
 
+				String noEditModeDivId = "noEditModeDiv" + step.getTeststepid();
+				String editModeDivId = "editModeDiv" + step.getTeststepid();
+				String testcaseSelectionCheckboxId = "testcaseSelectionCheckbox" + step.getTeststepid();
+
 				out.println(String.format("""
 						<tr>
 							<td style="width: 2em; white-space: nowrap; text-align: center;">
 								<input type="checkbox"
 									   class="testcaseSelectionCheckbox"
+									   id="%12$s"
 						  		       name="selectedTestStepIds"
 						  		       value="%3$s"
 						  		       onchange="syncTestcaseSelectionMasterCheckbox('%4$s'); toggleTableRowHighlight(this)">
 							</td>
 							<td>
-								<div style="overflow-x: auto; overflow-y: hidden; display: none;" class="%7$s">
-									<code class="language-haskell">%1$s</code>
+								<div id="%10$s" style="display: block;">
+									<div style="overflow-x: auto; overflow-y: hidden; display: none;" class="%7$s">
+										<code class="language-haskell">%1$s</code>
+										<a href="#" onclick="enterEditMode('%4$s', '%10$s', '%11$s', '%12$s'); return false;">bearbeiten</a>
+									</div>
+									<div style="overflow-x: auto; overflow-y: hidden; display: none;" class="%8$s">
+										<code class="language-haskell">%5$s</code>
+										<a href="#" onclick="enterEditMode('%4$s', '%10$s', '%11$s', '%12$s'); return false;">bearbeiten</a>
+									</div>
+									<div style="overflow-x: auto; overflow-y: hidden; display: block;" class="%9$s">
+										<code class="language-haskell">%6$s</code>
+										<a href="#" onclick="enterEditMode('%4$s', '%10$s', '%11$s', '%12$s'); return false;">bearbeiten</a>
+									</div>
 								</div>
-								<div style="overflow-x: auto; overflow-y: hidden; display: none;" class="%8$s">
-									<code class="language-haskell">%5$s</code>
-								</div>
-								<div style="overflow-x: auto; overflow-y: hidden; display: block;" class="%9$s">
-									<code class="language-haskell">%6$s</code>
+								<div id="%11$s" style="display: none;">
+									<textarea style="width: 99%%; resize: none" rows="8">%5$s</textarea>
+									<div style="text-align: center">
+										<a href="#" onclick="leaveEditMode('%4$s', '%10$s', '%11$s'); return false;">abbrechen</a>
+										<button>speichern</button>
+									</div>
 								</div>
 							</td>
 							<td><div style="overflow-x: auto; overflow-y: hidden;">
 								<code class="language-haskell">%2$s</code>
 							</div></td>
 						</tr>
-						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId, Util.escapeHTML(testcodeWithoutWrapperCode), Util.escapeHTML(testcodeWithoutWrapperCodeWithoutCyclicIntMappers), fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass));
+						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId, Util.escapeHTML(testcodeWithoutWrapperCode), Util.escapeHTML(testcodeWithoutWrapperCodeWithoutCyclicIntMappers), fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass, noEditModeDivId, editModeDivId, testcaseSelectionCheckboxId));
 			}
 
 			out.println(String.format("""
