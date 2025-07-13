@@ -19,6 +19,9 @@
 
 package de.tuclausthal.submissioninterface.servlets.view;
 
+import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.extractUnescapedGhciExpressionWrappedInCatchAndTimeout;
+import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.prettyPrintCyclicIntMappers;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serial;
@@ -110,6 +113,25 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						const masterCheckbox = document.getElementById(formId).getElementsByClassName('testcaseSelectionMasterCheckbox')[0];
 						const allChecked = Array.from(checkboxes).every(cb => cb.checked);
 						masterCheckbox.checked = allChecked;
+					}
+					function updateTestcodeSimplification(fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass, showGhciEmbeddingCheckboxId, showRandomFunctionsCheckboxId) {
+						const showGhciEmbedding = document.getElementById(showGhciEmbeddingCheckboxId).checked;
+						const showRandomFunctions = document.getElementById(showRandomFunctionsCheckboxId).checked;
+				
+						Array.from(document.getElementsByClassName(fullTestcodeClass)).forEach(elem => elem.style.display = 'none');
+						Array.from(document.getElementsByClassName(noGhciFullFunctionsClass)).forEach(elem => elem.style.display = 'none');
+						Array.from(document.getElementsByClassName(simpleTestcodeClass)).forEach(elem => elem.style.display = 'none');
+						document.getElementById(showRandomFunctionsCheckboxId).disabled = false;
+				
+						if (showGhciEmbedding) {
+							Array.from(document.getElementsByClassName(fullTestcodeClass)).forEach(elem => elem.style.display = 'block');
+							document.getElementById(showRandomFunctionsCheckboxId).checked = true;
+							document.getElementById(showRandomFunctionsCheckboxId).disabled = true;
+						} else if (showRandomFunctions) {
+							Array.from(document.getElementsByClassName(noGhciFullFunctionsClass)).forEach(elem => elem.style.display = 'block');
+						} else {
+							Array.from(document.getElementsByClassName(simpleTestcodeClass)).forEach(elem => elem.style.display = 'block');
+						}
 					}
 				</script>
 				""");
@@ -290,6 +312,13 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			String formId = "deleteOrDuplicateMultipleTestStepsForm" + i;
 			String formActionInputFieldId = "deleteOrDuplicateMultipleTestStepsFormAction" + i;
 
+			String showGhciEmbeddingCheckboxId = "showGhciEmbeddingCheckbox" + i;
+			String showRandomFunctionsCheckboxId = "showRandomFunctionsCheckbox" + i;
+
+			String fullTestcodeClass = "fullTestcode" + i;
+			String noGhciFullFunctionsClass = "noGhciFullFunctions" + i;
+			String simpleTestcodeClass = "simpleTestcode" + i;
+
 			out.println(String.format("""
 					<form action="%1$s" method="post" id="%2$s">
 						<input type="hidden" name="testid" value="%3$s">
@@ -300,13 +329,36 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 									<th style="width: 2em; white-space: nowrap;">
 										<input type="checkbox" class="testcaseSelectionMasterCheckbox" onchange="toggleAllTestcaseSelectionCheckboxes(this, '%2$s')">
 									</th>
-									<th style="width: 66%%">Testcode</th>
+									<th style="width: 66%%">
+										Testcode
+										<div style="font-weight: normal;">
+											<label>
+												<input 	type="checkbox"
+														onchange="updateTestcodeSimplification('%6$s', '%7$s', '%8$s', '%4$s', '%5$s');"
+														id="%4$s">
+												<code>ghci</code> Einbettung anzeigen
+											</label>
+											<label>
+												<input	type="checkbox"
+														onchange="updateTestcodeSimplification('%6$s', '%7$s', '%8$s', '%4$s', '%5$s');"
+														id="%5$s">
+												Zufallsfunktionsdefinitionen anzeigen
+											</label>
+										</div>
+									</th>
 									<th>Erwartete Ausgabe</th>
 								</tr>
 							</thead>
-					""", Util.generateHTMLLink("?", response), formId, test.getId()));
+					""", Util.generateHTMLLink("?", response), formId, test.getId(), showGhciEmbeddingCheckboxId, showRandomFunctionsCheckboxId, fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass));
 
 			for (DockerTestStep step : testStepsGroupedByFunctionNameWithType.get(functionNameWithType)) {
+				String testcodeWithoutWrapperCode = extractUnescapedGhciExpressionWrappedInCatchAndTimeout(step.getTestcode());
+				if (testcodeWithoutWrapperCode == null) {
+					testcodeWithoutWrapperCode = step.getTestcode();
+				}
+
+				String testcodeWithoutWrapperCodeWithoutCyclicIntMappers = prettyPrintCyclicIntMappers(testcodeWithoutWrapperCode);
+
 				out.println(String.format("""
 						<tr>
 							<td style="width: 2em; white-space: nowrap; text-align: center;">
@@ -316,14 +368,22 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 						  		       value="%3$s"
 						  		       onchange="syncTestcaseSelectionMasterCheckbox('%4$s'); toggleTableRowHighlight(this)">
 							</td>
-							<td><div style="overflow-x: auto; overflow-y: hidden;">
-								<code class="language-haskell">%1$s</code>
-							</div></td>
+							<td>
+								<div style="overflow-x: auto; overflow-y: hidden; display: none;" class="%7$s">
+									<code class="language-haskell">%1$s</code>
+								</div>
+								<div style="overflow-x: auto; overflow-y: hidden; display: none;" class="%8$s">
+									<code class="language-haskell">%5$s</code>
+								</div>
+								<div style="overflow-x: auto; overflow-y: hidden; display: block;" class="%9$s">
+									<code class="language-haskell">%6$s</code>
+								</div>
+							</td>
 							<td><div style="overflow-x: auto; overflow-y: hidden;">
 								<code class="language-haskell">%2$s</code>
 							</div></td>
 						</tr>
-						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId));
+						""", Util.escapeHTML(step.getTestcode()), Util.escapeHTML(step.getExpect()), step.getTeststepid(), formId, Util.escapeHTML(testcodeWithoutWrapperCode), Util.escapeHTML(testcodeWithoutWrapperCodeWithoutCyclicIntMappers), fullTestcodeClass, noGhciFullFunctionsClass, simpleTestcodeClass));
 			}
 
 			out.println(String.format("""
