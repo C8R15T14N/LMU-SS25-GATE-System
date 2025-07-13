@@ -19,6 +19,8 @@
 
 package de.tuclausthal.submissioninterface.testframework.tests.impl;
 
+import de.tuclausthal.submissioninterface.persistence.datamodel.DockerTestStep;
+
 /**
  * @author Christian Wagner
  */
@@ -27,5 +29,26 @@ public class HaskellRuntimeTest extends DockerTest {
 		super(test);
 	}
 
-	// TODO@CHW: Override: public void performTest(final Path basePath, final Path submissionPath, final TestExecutorTestResult testResult) throws Exception {
+	@Override
+	protected String generateTestShellScript() {
+		// Difference to DockerTest.generateTestShellScript(): continue executing testcases, even if a previous case failed
+		// Reason: subsequent cases might be correct again, which is relevant for clustering the submissions correctly.
+		StringBuilder testCode = new StringBuilder();
+		testCode.append("#!/bin/bash\n");
+		testCode.append("set -e\n");
+		testCode.append(test.getPreparationShellCode());
+		testCode.append("\n");
+
+		for (DockerTestStep testStep : test.getTestSteps()) {
+			testCode.append("echo '").append(getSeparator()).append("'\n");
+			testCode.append("echo '").append(getSeparator()).append("' >&2\n");
+			testCode.append("{\n");
+			testCode.append("set +e\n");
+			testCode.append(testStep.getTestcode());
+			testCode.append("\n");
+			testCode.append("} || echo \"ERROR: syntax error or missing function\"\n");
+		}
+
+		return testCode.toString();
+	}
 }

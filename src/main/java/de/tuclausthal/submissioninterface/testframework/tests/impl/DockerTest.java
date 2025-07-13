@@ -205,6 +205,11 @@ public class DockerTest extends TempDirTest<de.tuclausthal.submissioninterface.p
 		return testCode.toString();
 	}
 
+	protected String getSeparator() {
+		// needed for HaskellRuntimeTest subclass
+		return separator;
+	}
+
 	@Override
 	protected void performTestInTempDir(Path basePath, Path pTempDir, TestExecutorTestResult testResult) throws Exception {}
 }
