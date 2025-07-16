@@ -22,11 +22,14 @@ package de.tuclausthal.submissioninterface.testanalyzer;
 import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.extractUnescapedGhciExpressionWrappedInCatchAndTimeout;
 
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
 
 import org.hibernate.Session;
 
@@ -168,42 +171,55 @@ public class CommonErrorAnalyzer {
 			return;
 		}
 
+		// TODO@CHW cluster for each function individually
 		final JsonObject testOutputJson = Json.createReader(new StringReader(testResult.getTestOutput())).readObject();
+		JsonObjectBuilder commonErrorTitleJsonObjectBuilder = Json.createObjectBuilder();
 
-		String stepsStr = "";
 		if (testOutputJson.containsKey("steps")) {
 			final JsonArray steps = testOutputJson.getJsonArray("steps");
+			JsonArrayBuilder testcaseArrayBuilder = Json.createArrayBuilder();
 
-			StringBuilder stepsStrBuilder = new StringBuilder();
 			for (int i = 0; i < steps.size(); i++) {
 				if (!steps.getJsonObject(i).getBoolean("ok")) {
-					String gotValue = steps.getJsonObject(i).getString("got");
-
-					String testcaseIdentifier = extractUnescapedGhciExpressionWrappedInCatchAndTimeout(test.getTestSteps().get(i).getTestcode());
+					String gotValue = steps.getJsonObject(i).getString("got").strip(); // TODO@CHW remove line numbers from the exceptions here
+					String testCodeWrappedInCatchAndTimeout = test.getTestSteps().get(i).getTestcode();
+					String testcaseIdentifier = extractUnescapedGhciExpressionWrappedInCatchAndTimeout(testCodeWrappedInCatchAndTimeout);
 					if (testcaseIdentifier == null) {
-						testcaseIdentifier = "unknown case";
+						testcaseIdentifier = testCodeWrappedInCatchAndTimeout;
 					}
-					stepsStrBuilder.append("Case \"").append(testcaseIdentifier).append("\" failed with \"").append(gotValue).append("\";");
+					testcaseArrayBuilder.add(Json.createObjectBuilder().add("testcase", testcaseIdentifier).add("got", gotValue));
 				}
 			}
-
-			stepsStr = stepsStrBuilder.toString();
+			commonErrorTitleJsonObjectBuilder.add("testcases", testcaseArrayBuilder);
 		}
 
-		String keyStr = "";
+		List<String> flags = new ArrayList<>();
 		if (testOutputJson.containsKey("stderr") && !testOutputJson.getString("stderr").isEmpty()) {
-			keyStr += "stderr not empty; ";
+			flags.add("stderr not empty");
 		}
-		if (testOutputJson.containsKey("stdout") && testOutputJson.getString("stdout").isEmpty())
-			keyStr += "stdout empty; ";
-		if (testOutputJson.containsKey("exitedCleanly") && testOutputJson.getBoolean("exitedCleanly"))
-			keyStr += "exited cleanly; ";
-		if (testOutputJson.containsKey("missing-tests"))
-			keyStr += "missing tests; ";
-		if (testOutputJson.containsKey("time-exceeded"))
-			keyStr += "time exceeded; ";
+		if (testOutputJson.containsKey("stdout") && testOutputJson.getString("stdout").isEmpty()) {
+			flags.add("stdout empty");
+		}
+		if (testOutputJson.containsKey("exitedCleanly") && testOutputJson.getBoolean("exitedCleanly")) {
+			flags.add("exited cleanly");
 
-		bindCommonError(testResult, stepsStr + keyStr, keyStr, CommonError.Type.RunTimeError);
+		}
+		if (testOutputJson.containsKey("missing-tests")) {
+			flags.add("missing tests");
+		}
+		if (testOutputJson.containsKey("time-exceeded")) {
+			flags.add("time exceeded");
+		}
+
+		StringBuilder keyStrStringBuilder = new StringBuilder();
+		JsonArrayBuilder flagsArrayBuilder = Json.createArrayBuilder();
+		for (String flag : flags) {
+			keyStrStringBuilder.append(flag).append("; ");
+			flagsArrayBuilder.add(flag);
+		}
+
+		commonErrorTitleJsonObjectBuilder.add("flags", flagsArrayBuilder);
+		bindCommonError(testResult, commonErrorTitleJsonObjectBuilder.build().toString(), keyStrStringBuilder.toString(), CommonError.Type.RunTimeError);
 	}
 
 	private void groupJUnitTestResults(JUnitTest test, final TestResult testResult) {
