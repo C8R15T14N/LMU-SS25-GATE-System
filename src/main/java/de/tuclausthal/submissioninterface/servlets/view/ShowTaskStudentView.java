@@ -69,6 +69,7 @@ import de.tuclausthal.submissioninterface.servlets.controller.ShowTask;
 import de.tuclausthal.submissioninterface.servlets.controller.SubmitSolution;
 import de.tuclausthal.submissioninterface.servlets.controller.WebStart;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowDockerTestResult;
+import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellRuntimeCommonErrorTitle;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellRuntimeTestResult;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellSyntaxTestResult;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowJavaAdvancedIOTestResult;
@@ -380,11 +381,27 @@ public class ShowTaskStudentView extends HttpServlet {
 					if (!testResult.getPassedTest()) {
 						TestResultCommonErrorDAO trce = new TestResultCommonErrorDAO(session);
 						List<CommonError> ces = trce.getCommonError(testResult);
-						String commonErrorString = "| ";
-						for (CommonError ce : ces) {
-							commonErrorString = commonErrorString + Util.escapeHTML(ce.getTitle()) + " | ";
+
+						if (testResult.getTest() instanceof HaskellRuntimeTest) {
+							out.println("<br>");
+							out.println("<b>Fehlermeldung:</b>");
+							out.println("<table>");
+
+							for (CommonError ce : ces) {
+								out.println("<tr><td>");
+								ShowHaskellRuntimeCommonErrorTitle.formatCommonErrorTitle(out, ce.getTitle());
+								out.println("</td></tr>");
+							}
+
+							out.println("</table>");
+							out.println("<br>");
+						} else {
+							String commonErrorString = "| ";
+							for (CommonError ce : ces) {
+								commonErrorString = commonErrorString + Util.escapeHTML(ce.getTitle()) + " | ";
+							}
+							out.println("<br><b>Fehlermeldung: </b>" + commonErrorString + "<br>");
 						}
-						out.println("<br><b>Fehlermeldung: </b>" + commonErrorString + "<br>");
 					}
 					if (!testResult.getTestOutput().isEmpty() && testResult.getTest().isGiveDetailsToStudents()) {
 						if (testResult.getTest() instanceof JavaAdvancedIOTest) {

@@ -38,6 +38,7 @@ import de.tuclausthal.submissioninterface.persistence.datamodel.TestResult;
 import de.tuclausthal.submissioninterface.servlets.GATEView;
 import de.tuclausthal.submissioninterface.servlets.controller.ShowFile;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowDockerTestResult;
+import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellRuntimeCommonErrorTitle;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellRuntimeTestResult;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowHaskellSyntaxTestResult;
 import de.tuclausthal.submissioninterface.servlets.view.fragments.ShowJavaAdvancedIOTestResult;
@@ -71,6 +72,10 @@ public class ShowSubmissionStudentView extends HttpServlet {
 		template.printTemplateHeader(commonError, submission, "Testübersicht");
 
 		PrintWriter out = response.getWriter();
+		if (commonError.getTest() instanceof HaskellRuntimeTest) {
+			ShowHaskellRuntimeCommonErrorTitle.formatCommonErrorTitle(out, commonError.getTitle());
+		}
+
 		StringBuilder javaScript = new StringBuilder();
 
 		if (!submission.getTestResults().isEmpty()) {
