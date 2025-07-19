@@ -105,7 +105,15 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		if ("browseModelSolution".equals(request.getParameter("action"))) {
 			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
 			try {
-				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session);
+				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session, false);
+			} catch (IOException e) {
+				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
+			}
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("browseModelSolutionExperimentalDefaulting".equals(request.getParameter("action"))) {
+			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
+			try {
+				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session, true);
 			} catch (IOException e) {
 				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
 			}
@@ -244,7 +252,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tx.commit();
 	}
 
-	private static void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) throws IOException {
+	private static void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session, boolean useExperimentalDefaultingRules) throws IOException {
 		List<String> haskellIdentifiers = browseModelSolution(haskellRuntimeTest.getTask());
 		HaskellClassifiedIdentifiers haskellClassifiedIdentifiers = classifyHaskellIdentifiers(haskellIdentifiers);
 
@@ -266,7 +274,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			haskellRuntimeTestIdentifier.setFunctionName(haskellFunction.getName());
 			haskellRuntimeTestIdentifier.setFunctionType(haskellFunction.getTypeSignature());
 
-			String defaultTypeSignature = getGhciDefaultTypeSignature(haskellRuntimeTest.getTask(), haskellFunction.getName());
+			String defaultTypeSignature = getGhciDefaultTypeSignature(haskellRuntimeTest.getTask(), haskellFunction.getName(), useExperimentalDefaultingRules);
 			haskellRuntimeTestIdentifier.setFunctionDefaultType(defaultTypeSignature);
 
 			String concreteTypeSignature = replaceUnconstrainedTypeVariables(defaultTypeSignature, HaskellPrimitiveType.Int); // TODO@CHW other default type
@@ -540,8 +548,10 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return classifiedIdentifiers;
 	}
 
-	private static String getGhciDefaultTypeSignature(Task task, String identifierName) throws IOException {
-		SubprocessResult result = evaluateWithGhci(null, null, true, new String[] { ":type +d " + identifierName }, task, true);
+	private static String getGhciDefaultTypeSignature(Task task, String identifierName, boolean useExperimentalDefaultingRules) throws IOException {
+		// TODO@CHW defaulting rules are experimental
+		String[] expressionsToEvaluate = useExperimentalDefaultingRules ? new String[] { "default (Integer, Double, ())", ":type +d " + identifierName } : new String[] { ":type +d " + identifierName };
+		SubprocessResult result = evaluateWithGhci(null, null, true, expressionsToEvaluate, task, true);
 
 		String defaultTypeSignature = normalizeTypeSignature(result.stdOut().split("::")[1].trim());
 		if (defaultTypeSignature.contains("=>")) {
