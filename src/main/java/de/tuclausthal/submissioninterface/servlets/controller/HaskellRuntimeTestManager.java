@@ -532,10 +532,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				classifiedIdentifiers.addClass(line);
 			} else if (line.startsWith("newtype") || line.startsWith("data")) {
 				classifiedIdentifiers.addNewtypeOrData(line);
-			} else if (line.contains("::")) {
+			} else if (line.contains("::") && !line.startsWith("type")) {
 				classifiedIdentifiers.addFunction(line);
-			} else if (!(line.isEmpty() || line.startsWith("type"))) {
-				throw new IllegalArgumentException("Invalid Haskell identifier: " + line);
 			}
 		}
 
