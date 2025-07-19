@@ -19,6 +19,8 @@
 
 package de.tuclausthal.submissioninterface.servlets.view.fragments;
 
+import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRuntimeTestManager.prettyPrintCyclicIntMappers;
+
 import java.io.PrintWriter;
 import java.io.StringReader;
 
@@ -40,7 +42,7 @@ public class ShowHaskellRuntimeCommonErrorTitle {
 				out.println("<ul>");
 				for (JsonValue testCaseVal : commonErrorTitleAsJson.getJsonArray("testcases")) {
 					JsonObject testCase = testCaseVal.asJsonObject();
-					String testcase = testCase.getString("testcase", "");
+					String testcase = prettyPrintCyclicIntMappers(testCase.getString("testcase", ""));
 					String got = testCase.getString("got", "");
 
 					out.println(String.format("""
