@@ -181,7 +181,13 @@ public class CommonErrorAnalyzer {
 
 			for (int i = 0; i < steps.size(); i++) {
 				if (!steps.getJsonObject(i).getBoolean("ok")) {
-					String gotValue = steps.getJsonObject(i).getString("got").strip(); // TODO@CHW remove line numbers from the exceptions here
+					String gotValue = steps.getJsonObject(i).getString("got").strip();
+
+					if (gotValue.startsWith("EXCEPTION")) {
+						// remove line numbers from exceptions, since differences in line numbers should not be considered for clustering
+						gotValue = gotValue.replaceAll("\\b\\d+\\b", "-");
+					}
+
 					String testCodeWrappedInCatchAndTimeout = test.getTestSteps().get(i).getTestcode();
 					String testcaseIdentifier = extractUnescapedGhciExpressionWrappedInCatchAndTimeout(testCodeWrappedInCatchAndTimeout);
 					if (testcaseIdentifier == null) {
