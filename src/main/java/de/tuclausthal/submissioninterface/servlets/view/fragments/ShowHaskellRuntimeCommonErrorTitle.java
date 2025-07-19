@@ -35,6 +35,11 @@ public class ShowHaskellRuntimeCommonErrorTitle {
 		try {
 			JsonObject commonErrorTitleAsJson = Json.createReader(new StringReader(commonErrorTitle)).readObject();
 
+			if (commonErrorTitleAsJson.containsKey("function")) {
+				out.println("<strong>Funktion</strong>: <code>" + Util.escapeHTML(commonErrorTitleAsJson.getString("function", "")) + "</code><br>");
+				out.println("<br>");
+			}
+
 			if (commonErrorTitleAsJson.containsKey("testcases")) {
 				out.println("<strong>Fehlgeschlagene Testfälle:</strong>");
 

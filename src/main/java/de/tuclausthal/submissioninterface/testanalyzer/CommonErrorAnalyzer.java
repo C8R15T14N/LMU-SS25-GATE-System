@@ -23,13 +23,14 @@ import static de.tuclausthal.submissioninterface.servlets.controller.HaskellRunt
 
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
 
 import org.hibernate.Session;
 
@@ -171,13 +172,11 @@ public class CommonErrorAnalyzer {
 			return;
 		}
 
-		// TODO@CHW cluster for each function individually
 		final JsonObject testOutputJson = Json.createReader(new StringReader(testResult.getTestOutput())).readObject();
-		JsonObjectBuilder commonErrorTitleJsonObjectBuilder = Json.createObjectBuilder();
+		Map<String, List<JsonObject>> failedTestcasesByFunction = new HashMap<>();
 
 		if (testOutputJson.containsKey("steps")) {
 			final JsonArray steps = testOutputJson.getJsonArray("steps");
-			JsonArrayBuilder testcaseArrayBuilder = Json.createArrayBuilder();
 
 			for (int i = 0; i < steps.size(); i++) {
 				if (!steps.getJsonObject(i).getBoolean("ok")) {
@@ -193,10 +192,12 @@ public class CommonErrorAnalyzer {
 					if (testcaseIdentifier == null) {
 						testcaseIdentifier = testCodeWrappedInCatchAndTimeout;
 					}
-					testcaseArrayBuilder.add(Json.createObjectBuilder().add("testcase", testcaseIdentifier).add("got", gotValue));
+
+					String functionTitle = test.getTestSteps().get(i).getTitle();
+					JsonObject failedTestcase = Json.createObjectBuilder().add("testcase", testcaseIdentifier).add("got", gotValue).build();
+					failedTestcasesByFunction.computeIfAbsent(functionTitle, k -> new ArrayList<>()).add(failedTestcase);
 				}
 			}
-			commonErrorTitleJsonObjectBuilder.add("testcases", testcaseArrayBuilder);
 		}
 
 		List<String> flags = new ArrayList<>();
@@ -208,7 +209,6 @@ public class CommonErrorAnalyzer {
 		}
 		if (testOutputJson.containsKey("exitedCleanly") && testOutputJson.getBoolean("exitedCleanly")) {
 			flags.add("exited cleanly");
-
 		}
 		if (testOutputJson.containsKey("missing-tests")) {
 			flags.add("missing tests");
@@ -218,14 +218,22 @@ public class CommonErrorAnalyzer {
 		}
 
 		StringBuilder keyStrStringBuilder = new StringBuilder();
-		JsonArrayBuilder flagsArrayBuilder = Json.createArrayBuilder();
 		for (String flag : flags) {
 			keyStrStringBuilder.append(flag).append("; ");
-			flagsArrayBuilder.add(flag);
 		}
 
-		commonErrorTitleJsonObjectBuilder.add("flags", flagsArrayBuilder);
-		bindCommonError(testResult, commonErrorTitleJsonObjectBuilder.build().toString(), keyStrStringBuilder.toString(), CommonError.Type.RunTimeError);
+		for (Map.Entry<String, List<JsonObject>> entry : failedTestcasesByFunction.entrySet()) {
+			String functionTitle = entry.getKey();
+			List<JsonObject> testcases = entry.getValue();
+
+			JsonArrayBuilder testcaseArrayBuilder = Json.createArrayBuilder();
+			for (JsonObject testcase : testcases) {
+				testcaseArrayBuilder.add(testcase);
+			}
+
+			JsonObject commonErrorTitleJsonObject = Json.createObjectBuilder().add("function", functionTitle).add("testcases", testcaseArrayBuilder).build();
+			bindCommonError(testResult, commonErrorTitleJsonObject.toString(), keyStrStringBuilder.toString(), CommonError.Type.RunTimeError);
+		}
 	}
 
 	private void groupJUnitTestResults(JUnitTest test, final TestResult testResult) {
