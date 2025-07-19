@@ -33,7 +33,6 @@ import de.tuclausthal.submissioninterface.util.Util;
 public class ShowHaskellRuntimeCommonErrorTitle {
 	public static void formatCommonErrorTitle(PrintWriter out, String commonErrorTitle) {
 		try {
-			// TODO@CHW handle random functions
 			JsonObject commonErrorTitleAsJson = Json.createReader(new StringReader(commonErrorTitle)).readObject();
 
 			if (commonErrorTitleAsJson.containsKey("testcases")) {
