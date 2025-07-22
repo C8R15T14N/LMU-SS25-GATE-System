@@ -74,7 +74,7 @@ public class HaskellSyntaxTestTest {
 
 	@Test
 	void testRegexBasedHaskellClusteringComplex() {
-		String stderr = "Test:6:1-8: warning: [-Wtabs]\n   Tab character found here, and in two further locations.\n   Suggested fix: Please use spaces instead.\n |\n6 |         where test f [] acc =acc\n | ^^^^^^^^\n" + "\n" + "Test:14:26-33: error:\n   • Expected kind ‘* -> * -> Constraint’, but ‘Test’ has kind ‘*’\n   • In the instance declaration for ‘Test a b’\n  |\n" + "14 | instance (Eq a, Eq b) => Test a b  where\n  |                          ^^^^^^^^" + "Test:7:51: error: parse error on input ‘=’\n |\n" + "7 |                   Test f (x:xs) (first, second) = test f xs (first ++ [fst (f x)], second ++ [snd (f x)])\n |                                                   ^";
+		String stderr = "Test:6:1-8: warning: [-Wtabs]\n   Tab character found here, and in two further locations.\n   Suggested fix: Please use spaces instead.\n |\n6 |         where test f [] acc =acc\n | ^^^^^^^^\n\nTest:14:26-33: error:\n   • Expected kind ‘* -> * -> Constraint’, but ‘Test’ has kind ‘*’\n   • In the instance declaration for ‘Test a b’\n  |\n14 | instance (Eq a, Eq b) => Test a b  where\n  |                          ^^^^^^^^Test:7:51: error: parse error on input ‘=’\n |\n7 |                   Test f (x:xs) (first, second) = test f xs (first ++ [fst (f x)], second ++ [snd (f x)])\n |                                                   ^";
 		String cluster = RegexBasedHaskellClustering.classify(stderr);
 		assertEquals("Parse-Fehler", cluster, "The stderr should be classified as 'Parse-Fehler'.");
 	}
