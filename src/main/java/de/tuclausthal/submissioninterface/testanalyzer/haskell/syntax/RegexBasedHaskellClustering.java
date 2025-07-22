@@ -30,7 +30,7 @@ public class RegexBasedHaskellClustering {
 		CLUSTERS.put("GHCi Kontext in Abgabe", Pattern.compile("(^|\\n).*?(ghci>|Prelude>|parse error on input\\s+‘(:\\{|}:)’|:\\{|}:)", Pattern.MULTILINE));
 		CLUSTERS.put("Ungültige Top-Level-Deklaration", Pattern.compile("Parse error: module header, import declaration\\s+or\\s+top-level declaration expected\\.", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Parse-Fehler durch Import-Fehler", Pattern.compile("(parse error on input)[\\s\\S]+?‘?import", Pattern.CASE_INSENSITIVE));
-		CLUSTERS.put("Parse-Fehler in 'let'-Binding", Pattern.compile("(?:\\(let.*in.*\\)-syntax\\s+in\\s+pattern|\\bparse\\s+error\\s*\\(possibly\\s+incorrect\\s+indentation[^\\)]*\\))[\\s\\S]*?\\n\\s*\\d+\\s*\\|\\s+.*\\blet\\b[^\\n]*=", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
+		CLUSTERS.put("Parse-Fehler in 'let'-Binding", Pattern.compile("(?:\\(let.*in.*\\)-syntax\\s+in\\s+pattern|\\bparse\\s+error\\s*\\(possibly\\s+incorrect\\s+indentation[^)]*\\))[\\s\\S]*?\\n\\s*\\d+\\s*\\|\\s+.*\\blet\\b[^\\n]*=", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
 		CLUSTERS.put("Parse-Fehler in Funktionsdeklaration", Pattern.compile("parse error.*?\\n\\s*\\|\\s*(\\d+)\\s*\\|\\s([a-z]\\w*)\\s*::", Pattern.DOTALL | Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Parse-Fehler", Pattern.compile("\\bparse\\s+error\\b", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Typed Hole", Pattern.compile("found hole: _ ::", Pattern.CASE_INSENSITIVE));
@@ -64,7 +64,7 @@ public class RegexBasedHaskellClustering {
 
 		// instance and class
 		CLUSTERS.put("Überlappende Instanzen", Pattern.compile("overlapping instances for", Pattern.CASE_INSENSITIVE));
-		CLUSTERS.put("Fehlende Constraint bei Funktionssignatur", Pattern.compile("No instance for [\\(‘]\\w+ [a-z][\\)’] arising from a use of", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
+		CLUSTERS.put("Fehlende Constraint bei Funktionssignatur", Pattern.compile("No instance for [(‘]\\w+ [a-z][)’] arising from a use of", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
 		CLUSTERS.put("Fehlende Superklassen-Instanz", Pattern.compile("no\\s+instance\\s+for.*arising\\s+from\\s+the\\s+superclasses", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
 		CLUSTERS.put("Fehlende Instanz bei 'deriving'", Pattern.compile("When deriving the instance for", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Fehlende Instanz", Pattern.compile("no instance for", Pattern.CASE_INSENSITIVE));
@@ -102,7 +102,7 @@ public class RegexBasedHaskellClustering {
 		CLUSTERS.put("Sonstiger Fehler", Pattern.compile(".*", Pattern.DOTALL));
 	}
 
-	public final static String classify(String stderr) {
+	public static String classify(String stderr) {
 		for (Map.Entry<String, Pattern> entry : CLUSTERS.entrySet()) {
 			if (entry.getValue().matcher(stderr).find()) {
 				return entry.getKey();
