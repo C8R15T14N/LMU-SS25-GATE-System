@@ -1,5 +1,6 @@
 /*
- * Copyright 2021-2024 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2025 Sven Strickroth <email@cs-ware.de>
+ * Copyright 2025 Esat Avci <e.avci@campus.lmu.de>
  *
  * This file is part of the GATE.
  *
