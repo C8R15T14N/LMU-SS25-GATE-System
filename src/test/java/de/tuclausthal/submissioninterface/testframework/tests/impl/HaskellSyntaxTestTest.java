@@ -43,9 +43,9 @@ public class HaskellSyntaxTestTest {
 	void testHaskellSyntaxTestOK() {
 		var result = new TestExecutorTestResult();
 		var stdout = new StringBuffer("Test");
-		var stderr = new StringBuffer("testtext");
+		var stderr = new StringBuffer("warning: something something");
 		haskellSyntaxTest.analyzeAndSetResult(true, stdout, stderr, 0, false, result);
-		assertTrue(result.isTestPassed(), "Test should pass when stderr is empty.");
+		assertTrue(result.isTestPassed(), "Test should pass when stderr doesn't contain 'error:'.");
 	}
 
 	@Test
