@@ -32,7 +32,7 @@ public final class RegexBasedHaskellClustering {
 		CLUSTERS.put("GHCi Kontext in Abgabe", Pattern.compile("(^|\\n).*?(ghci>|Prelude>|parse error on input\\s+‘(:\\{|}:)’|:\\{|}:)", Pattern.MULTILINE));
 		CLUSTERS.put("Ungültige Top-Level-Deklaration", Pattern.compile("Parse error: module header, import declaration\\s+or\\s+top-level declaration expected\\.", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Parse-Fehler durch Import-Fehler", Pattern.compile("(parse error on input)[\\s\\S]+?‘?import", Pattern.CASE_INSENSITIVE));
-		CLUSTERS.put("Parse-Fehler in 'let'-Binding", Pattern.compile("(?:\\(let.*in.*\\)-syntax\\s+in\\s+pattern|parse\\s+error\\s*\\(possibly\\s+incorrect\\s+indentation[^)]*\\)[\\s\\S]*?\\n\\s*\\d+\\s*\\|\\s+.*\\blet\\b[^\\n]*=)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
+		CLUSTERS.put("Parse-Fehler in 'let'-Binding", Pattern.compile("\\(let.*in.*\\)-syntax\\s+in\\s+pattern|parse\\s+error\\s*\\(possibly\\s+incorrect\\s+indentation[^)]*\\)[\\s\\S]*?\\n\\s*\\d+\\s*\\|\\s+.*\\blet\\b[^\\n]*=", Pattern.CASE_INSENSITIVE | Pattern.DOTALL));
 		CLUSTERS.put("Parse-Fehler in Funktionsdeklaration", Pattern.compile("parse error.*?\\n\\s*\\|\\s*(\\d+)\\s*\\|\\s([a-z]\\w*)\\s*::", Pattern.DOTALL | Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Parse-Fehler", Pattern.compile("\\bparse\\s+error\\b", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Typed Hole", Pattern.compile("found hole: _ ::", Pattern.CASE_INSENSITIVE));
@@ -96,7 +96,7 @@ public final class RegexBasedHaskellClustering {
 		CLUSTERS.put("Letzte Anweisung im 'do'-Block", Pattern.compile("the last statement in a 'do' block must be an expression", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Ungültige Binding-Syntax", Pattern.compile("illegal binding of (?:built-in syntax|an existing name)", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Fehlende Klammern im Range-Ausdruck", Pattern.compile("a section must be enclosed in parentheses", Pattern.CASE_INSENSITIVE));
-		CLUSTERS.put("Ungültiges Enum-Deriving", Pattern.compile("can't make a derived instance of [''`]Enum.*[''`]", Pattern.CASE_INSENSITIVE));
+		CLUSTERS.put("Ungültiges Enum-Deriving", Pattern.compile("(?:can't|Can't) make a derived instance of [‘'`]Enum\\b", Pattern.CASE_INSENSITIVE));
 		CLUSTERS.put("Ungültiges Deriving", Pattern.compile("illegal deriving item", Pattern.CASE_INSENSITIVE));
 
 		// fallback
