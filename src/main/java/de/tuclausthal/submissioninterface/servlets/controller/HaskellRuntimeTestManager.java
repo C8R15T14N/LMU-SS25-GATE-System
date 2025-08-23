@@ -805,8 +805,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				  arbitrary = %1$s "cyclicIntMap" 50 <$> arbitrary
 				""", CYCLIC_INT_MAP_TYPE_NAME);
 
-		// String safeAsciiValues = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz()[]{}+-*/.,:; _!?#$%&<=>@";
-		String safeAsciiValues = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"; // TODO@CHW
+		String safeAsciiValues = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 		String typenameCharOnlySafeAscii = HaskellConstrainedPrimitiveType.Char_OnlySafeAscii.toString();
 		String typenameStringOnlySafeAscii = HaskellConstrainedPrimitiveType.String_OnlySafeAscii.toString();
 
@@ -938,7 +937,6 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			Matcher matcher = pattern.matcher(parameterType);
 			StringBuilder sb = new StringBuilder();
 
-			// TODO@CHW: not verified this while but looks fine
 			while (matcher.find()) {
 				String matchedKey = matcher.group();
 				String replacement = replacementDict.get(matchedKey);

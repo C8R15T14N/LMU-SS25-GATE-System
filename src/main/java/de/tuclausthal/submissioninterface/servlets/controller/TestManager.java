@@ -294,8 +294,6 @@ public class TestManager extends HttpServlet {
 			session.getTransaction().commit();
 			response.sendRedirect(Util.generateRedirectURL(TaskManager.class.getSimpleName() + "?action=editTask&lecture=" + task.getTaskGroup().getLecture().getId() + "&taskid=" + task.getTaskid(), response));
 		} else if ("saveNewTest".equals(request.getParameter("action")) && "haskellruntime".equals(request.getParameter("type"))) {
-			// TODO@CHW: make sure all parameters accessed by request.getParameter() are defined in HaskellRuntimeTestManagerView
-
 			session.beginTransaction();
 			TestDAOIf testDAO = DAOFactory.TestDAOIf(session);
 
