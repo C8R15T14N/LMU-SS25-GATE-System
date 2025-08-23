@@ -946,7 +946,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				parameterType = parameterType.strip().substring(1, parameterType.length() - 1).strip();
 
 				String returnType = getFunctionReturnType(parameterType);
-				cyclicIntMapTypes.add(cyclicIntMapConstructor + " " + returnType);
+				cyclicIntMapTypes.add(cyclicIntMapConstructor + " (" + returnType + ")");
 			} else {
 				cyclicIntMapTypes.add(parameterType);
 			}
