@@ -29,6 +29,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,6 +79,34 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	@Serial
 	private static final long serialVersionUID = 1L;
 	final static private Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+	private static final Map<String, List<String>> CONSTRAINT_TO_TYPES = new HashMap<>();
+
+	static {
+		CONSTRAINT_TO_TYPES.put("Eq", Arrays.asList("Bool", "Char", "Ordering", "Int", "Float", "Double", "String"));
+		CONSTRAINT_TO_TYPES.put("Ord", Arrays.asList("Bool", "Char", "Ordering", "Int", "Float", "Double", "String"));
+		CONSTRAINT_TO_TYPES.put("Show", Arrays.asList("Bool", "Char", "Ordering", "Int", "Float", "Double", "String"));
+		CONSTRAINT_TO_TYPES.put("Read", Arrays.asList("Bool", "Char", "Ordering", "Int", "Float", "Double", "String"));
+
+		CONSTRAINT_TO_TYPES.put("Enum", Arrays.asList("Bool", "Char", "Ordering", "Int", "Float", "Double"));
+		CONSTRAINT_TO_TYPES.put("Bounded", Arrays.asList("Int", "Char", "Bool", "Ordering"));
+
+		CONSTRAINT_TO_TYPES.put("Num", Arrays.asList("Int", "Float", "Double"));
+		CONSTRAINT_TO_TYPES.put("Integral", List.of("Int"));
+		CONSTRAINT_TO_TYPES.put("Real", Arrays.asList("Int", "Float", "Double"));
+		CONSTRAINT_TO_TYPES.put("Fractional", Arrays.asList("Float", "Double"));
+		CONSTRAINT_TO_TYPES.put("RealFrac", Arrays.asList("Float", "Double"));
+		CONSTRAINT_TO_TYPES.put("Floating", Arrays.asList("Float", "Double"));
+		CONSTRAINT_TO_TYPES.put("RealFloat", Arrays.asList("Float", "Double"));
+
+		CONSTRAINT_TO_TYPES.put("Semigroup", Arrays.asList("[Int]", "String", "Ordering"));
+		CONSTRAINT_TO_TYPES.put("Monoid", Arrays.asList("[Int]", "String", "Ordering"));
+
+		CONSTRAINT_TO_TYPES.put("Functor", List.of("Maybe"));
+		CONSTRAINT_TO_TYPES.put("Applicative", List.of("Maybe"));
+		CONSTRAINT_TO_TYPES.put("Monad", List.of("Maybe"));
+		CONSTRAINT_TO_TYPES.put("Foldable", List.of("Maybe"));
+	}
 
 	@Override
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -274,10 +304,8 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			haskellRuntimeTestIdentifier.setFunctionName(haskellFunction.getName());
 			haskellRuntimeTestIdentifier.setFunctionType(haskellFunction.getTypeSignature());
 
-			String defaultTypeSignature = getGhciDefaultTypeSignature(haskellRuntimeTest.getTask(), haskellFunction.getName(), useExperimentalDefaultingRules);
-			haskellRuntimeTestIdentifier.setFunctionDefaultType(defaultTypeSignature);
-
-			String concreteTypeSignature = replaceUnconstrainedTypeVariables(defaultTypeSignature, HaskellPrimitiveType.Int); // TODO@CHW other default type
+			String typeSignatureWithConcreteTypesForKnownConstraints = deriveConcreteTypesForConstrainedTypeVariables(haskellFunction.getTypeSignature());
+			String concreteTypeSignature = replaceUnconstrainedTypeVariables(typeSignatureWithConcreteTypesForKnownConstraints, HaskellPrimitiveType.Int);
 			haskellRuntimeTestIdentifier.setFunctionConcreteType(concreteTypeSignature);
 
 			session.persist(haskellRuntimeTestIdentifier);
@@ -548,17 +576,107 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		return classifiedIdentifiers;
 	}
 
-	private static String getGhciDefaultTypeSignature(Task task, String identifierName, boolean useExperimentalDefaultingRules) throws IOException {
-		// TODO@CHW defaulting rules are experimental
-		String[] expressionsToEvaluate = useExperimentalDefaultingRules ? new String[] { "default (Integer, Double, ())", ":type +d " + identifierName } : new String[] { ":type +d " + identifierName };
-		SubprocessResult result = evaluateWithGhci(null, null, true, expressionsToEvaluate, task, true);
-
-		String defaultTypeSignature = normalizeTypeSignature(result.stdOut().split("::")[1].trim());
-		if (defaultTypeSignature.contains("=>")) {
-			throw new IllegalArgumentException("Constraint => after :type +d not yet handled"); // TODO@CHW
-		} else {
-			return defaultTypeSignature;
+	private static String deriveConcreteTypesForConstrainedTypeVariables(String functionTypeSignature) {
+		if (functionTypeSignature.contains("::")) {
+			functionTypeSignature = functionTypeSignature.split("::", 2)[1].trim();
 		}
+
+		functionTypeSignature = functionTypeSignature.trim();
+
+		String[] parts = functionTypeSignature.split("=>");
+		String constraintsPart;
+		String typePart;
+
+		if (parts.length == 1) {
+			return functionTypeSignature;
+		} else {
+			constraintsPart = parts[0].trim();
+			typePart = parts[1].trim();
+		}
+
+		Map<String, Set<String>> constraintsByTypeVariable = new HashMap<>();
+		for (String c : constraintsPart.split(",")) {
+			c = c.trim();
+			c = c.replaceAll("[()]", "");
+			if (c.isEmpty())
+				continue;
+			String[] constraintParts = c.split("\\s+");
+			if (constraintParts.length == 2) {
+				String constraint = constraintParts[0];
+				String typeVariable = constraintParts[1];
+				constraintsByTypeVariable.computeIfAbsent(typeVariable, k -> new HashSet<>()).add(constraint);
+			}
+		}
+
+		Map<String, String> concreteTypeReplacementByTypeVariable = new HashMap<>();
+		for (Map.Entry<String, Set<String>> e : constraintsByTypeVariable.entrySet()) {
+			String typeVariable = e.getKey();
+			Set<String> constraints = e.getValue();
+
+			Set<String> possibleConcreteTypes = null;
+			boolean noUnknownConstraints = true;
+
+			for (String constraint : constraints) {
+				List<String> concreteTypesForCurrentConstraint = CONSTRAINT_TO_TYPES.get(constraint);
+				if (concreteTypesForCurrentConstraint == null) {
+					noUnknownConstraints = false;
+					break;
+				}
+				if (possibleConcreteTypes == null) {
+					possibleConcreteTypes = new HashSet<>(concreteTypesForCurrentConstraint);
+				} else {
+					possibleConcreteTypes.retainAll(concreteTypesForCurrentConstraint);
+				}
+			}
+
+			if (noUnknownConstraints && possibleConcreteTypes != null && !possibleConcreteTypes.isEmpty()) {
+				List<String> prioritizedTypes = Arrays.asList("Int", "Char", "Double", "Bool", "[Int]", "Ordering");
+
+				String chosen = null;
+				for (String preferred : prioritizedTypes) {
+					if (possibleConcreteTypes.contains(preferred)) {
+						chosen = preferred;
+						break;
+					}
+				}
+
+				if (chosen == null) {
+					chosen = possibleConcreteTypes.iterator().next();
+				}
+				concreteTypeReplacementByTypeVariable.put(typeVariable, chosen);
+			}
+		}
+
+		StringBuilder newTypeSignature = new StringBuilder();
+
+		List<String> remainingConstraints = new ArrayList<>();
+		for (String constraint : constraintsPart.split(",")) {
+			constraint = constraint.trim(); // e.g. "(Eq a"
+			constraint = constraint.replaceAll("[()]", ""); // e.g. "Eq a"
+			if (constraint.isEmpty())
+				continue;
+			String[] constraintParts = constraint.split("\\s+");
+			if (constraintParts.length == 2) {
+				String typeVariable = constraintParts[1]; // e.g. "a"
+				if (!concreteTypeReplacementByTypeVariable.containsKey(typeVariable)) {
+					remainingConstraints.add(constraint); // e.g. "Eq a"
+				}
+			}
+		}
+
+		if (!remainingConstraints.isEmpty()) {
+			newTypeSignature.append("(").append(String.join(", ", remainingConstraints)).append(") => ");
+		}
+
+		String finalTypePart = typePart;
+		for (Map.Entry<String, String> e : concreteTypeReplacementByTypeVariable.entrySet()) {
+			String typeVariable = e.getKey();
+			String concreteReplacementType = e.getValue();
+			finalTypePart = finalTypePart.replaceAll("\\b" + Pattern.quote(typeVariable) + "\\b", concreteReplacementType);
+		}
+
+		newTypeSignature.append(finalTypePart);
+		return normalizeTypeSignature(newTypeSignature.toString());
 	}
 
 	private static String normalizeTypeSignature(String typeSignature) {
@@ -568,13 +686,6 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 	}
 
 	private static String replaceUnconstrainedTypeVariables(String typeSignature, HaskellPrimitiveType replacementType) {
-		if (typeSignature.contains("=>")) {
-			// TODO@CHW: Implementation not yet correct for Functor, Monad, Applicative, etc.
-			// e.g. (<$>) :: Functor f => (a -> b) -> f a -> f b
-			//      (=<<) :: Monad m => (a -> m b) -> m a -> m b
-			throw new IllegalArgumentException("Type signature contains constraints, not implemented yet");
-		}
-
 		if (typeSignature.contains("::")) {
 			typeSignature = typeSignature.split("::", 2)[1].trim();
 		}
