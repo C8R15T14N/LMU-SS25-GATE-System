@@ -304,6 +304,27 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 			out.println("<div style=\"max-width: 100%; overflow-x: auto;\">");
 			out.println("<table style=\"width: 100%; table-layout: fixed; overflow-wrap: break-word;\">");
 			out.println(functionsHtml);
+
+			out.println(String.format("""
+					<td colspan="4">
+						<div align="center">
+							<form action="%1$s" method=post id=addFunctionForm style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
+								<input type=hidden name=testid value="%2$s">
+								<input type=hidden name=action value=addFunction>
+								<span><b>Funktion manuell hinzufügen:</b></span>
+								<label for="funcName">Name:</label>
+								<input type="text" id="funcName" name="functionName" required>
+								<label for="funcType">Typ:</label>
+								<input type="text" id="funcType" name="functionType" required>
+								<button class="generatorCaller"
+									onclick="submitGeneratorForm('addFunctionForm', this)">
+									hinzufügen
+								</button>
+							</form>
+						</div>
+					</td>
+					""", Util.generateHTMLLink("?", response), test.getId()));
+
 			out.println("</table>");
 			out.println("</div>");
 		}

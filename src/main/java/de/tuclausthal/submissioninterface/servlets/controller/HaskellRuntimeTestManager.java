@@ -140,6 +140,28 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
 			}
 			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
+		} else if ("addFunction".equals(request.getParameter("action"))) {
+			String functionName = request.getParameter("functionName");
+			String functionType = request.getParameter("functionType");
+
+			if (functionName != null && !functionName.isEmpty() && functionType != null && !functionType.isEmpty()) {
+				Transaction tx = session.beginTransaction();
+				functionName = functionName.strip();
+				functionType = normalizeTypeSignature(functionType).strip();
+
+				HaskellRuntimeTestIdentifier newFunctionIdentifier = new HaskellRuntimeTestIdentifier(haskellRuntimeTest, "function");
+				newFunctionIdentifier.setFunctionName(functionName);
+				newFunctionIdentifier.setFunctionType(functionType);
+
+				String typeSignatureWithConcreteTypesForKnownConstraints = deriveConcreteTypesForConstrainedTypeVariables(functionType);
+				String concreteTypeSignature = replaceUnconstrainedTypeVariables(typeSignatureWithConcreteTypesForKnownConstraints, HaskellPrimitiveType.Int);
+				newFunctionIdentifier.setFunctionConcreteType(concreteTypeSignature);
+
+				session.persist(newFunctionIdentifier);
+
+				tx.commit();
+			}
+			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
 		} else if ("deleteHaskellIdentifiers".equals(request.getParameter("action"))) {
 			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
 			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
