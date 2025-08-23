@@ -27,6 +27,7 @@ import java.io.PrintWriter;
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.ServletException;
@@ -224,7 +225,6 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 				<tr>
 					<th>Funktion</th>
 					<th>Typsignatur (<code>:t</code>)</th>
-					<th>Default Typsignatur (<code>:t +d</code>)</th>
 					<th>Konkrete Typsignatur</th>
 					<th>Generator ausführen</th>
 				</tr>
@@ -257,6 +257,9 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 					break;
 				case "function":
 					showFunctionTable = true;
+					boolean functionHasConcreteType = !Objects.equals(identifier.getFunctionConcreteType(), "") && !identifier.getFunctionConcreteType().contains("=>");
+					String formHiddenState = functionHasConcreteType ? "" : "hidden";
+					String missingConcreteWarningHiddenState = functionHasConcreteType ? "hidden" : "";
 					functionsHtml.append(String.format("""
 							<tr>
 								<td><div style="overflow-x: auto; overflow-y: hidden;">
@@ -266,13 +269,10 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 									<code class="language-haskell">%3$s</code>
 								</div></td>
 								<td><div style="overflow-x: auto; overflow-y: hidden;">
-									<code class="language-haskell">%6$s</code>
-								</div></td>
-								<td><div style="overflow-x: auto; overflow-y: hidden;">
 									<code class="language-haskell">%7$s</code>
 								</div></td>
 								<td style="text-align: center;">
-									<form action="%4$s" method="post" id="generateFunctionTestcasesForm%1$s">
+									<form action="%4$s" method="post" id="generateFunctionTestcasesForm%1$s" %8$s>
 										<input type=hidden name=testid value=%5$s>
 										<input type=hidden name=identifierid value=%1$s>
 										<input type=hidden name=action value=generateFunctionTestcases>
@@ -282,9 +282,10 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 											Testfälle generieren
 										</button>
 									</form>
+									<p style="color: red" %9$s>Fehler: Konkrete Typsignatur enthält Constraints</p>
 								</td>
 							</tr>
-							""", identifier.getIdentifierid(), Util.escapeHTML(identifier.getFunctionName()), Util.escapeHTML(identifier.getFunctionType()), Util.generateHTMLLink("?", response), test.getId(), Util.escapeHTML(identifier.getFunctionDefaultType()), Util.escapeHTML(identifier.getFunctionConcreteType())));
+							""", identifier.getIdentifierid(), Util.escapeHTML(identifier.getFunctionName()), Util.escapeHTML(identifier.getFunctionType()), Util.generateHTMLLink("?", response), test.getId(), Util.escapeHTML(identifier.getFunctionDefaultType()), Util.escapeHTML(identifier.getFunctionConcreteType()), formHiddenState, missingConcreteWarningHiddenState));
 					break;
 			}
 		}
