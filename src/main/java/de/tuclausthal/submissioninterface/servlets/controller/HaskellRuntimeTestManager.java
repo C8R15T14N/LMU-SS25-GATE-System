@@ -135,15 +135,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		if ("browseModelSolution".equals(request.getParameter("action"))) {
 			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
 			try {
-				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session, false);
-			} catch (IOException e) {
-				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
-			}
-			response.sendRedirect(Util.generateRedirectURL(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + haskellRuntimeTest.getId(), response));
-		} else if ("browseModelSolutionExperimentalDefaulting".equals(request.getParameter("action"))) {
-			deleteStoredClassifiedIdentifiers(haskellRuntimeTest, session);
-			try {
-				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session, true);
+				browseModelSolutionAndStoreClassifiedIdentifiers(haskellRuntimeTest, session);
 			} catch (IOException e) {
 				request.getSession().setAttribute("haskellRuntimeTestBrowseError", e.getMessage());
 			}
@@ -282,7 +274,7 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 		tx.commit();
 	}
 
-	private static void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session, boolean useExperimentalDefaultingRules) throws IOException {
+	private static void browseModelSolutionAndStoreClassifiedIdentifiers(HaskellRuntimeTest haskellRuntimeTest, Session session) throws IOException {
 		List<String> haskellIdentifiers = browseModelSolution(haskellRuntimeTest.getTask());
 		HaskellClassifiedIdentifiers haskellClassifiedIdentifiers = classifyHaskellIdentifiers(haskellIdentifiers);
 

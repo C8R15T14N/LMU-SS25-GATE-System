@@ -328,21 +328,6 @@ public class HaskellRuntimeTestManagerView extends HttpServlet {
 				</div>
 				""", Util.generateHTMLLink("?", response), test.getId(), Util.generateHTMLLink(HaskellRuntimeTestManager.class.getSimpleName() + "?testid=" + test.getId() + "&action=deleteHaskellIdentifiers", response)));
 
-		// TODO@CHW: this is an experimental feature
-		out.println(String.format("""
-				<br>
-				<div align="center">
-					<form action="%1$s" method=post id=browseModelSolutionExperimentalDefaultingForm>
-						<input type=hidden name=testid value="%2$s">
-						<input type=hidden name=action value=browseModelSolutionExperimentalDefaulting>
-						<button class="generatorCaller"
-							onclick="submitGeneratorForm('browseModelSolutionExperimentalDefaultingForm', this)">
-							Musterlösung analysieren mit experimentellem type defaulting (<code>:browse</code>)
-						</button>
-					</form>
-				</div>
-				""", Util.generateHTMLLink("?", response), test.getId()));
-
 		// NOTE: DockerTestStep title is used for storing the function signature (see controller servlet)
 		final Map<String, List<DockerTestStep>> testStepsGroupedByFunctionNameWithType = test.getTestSteps().stream().collect(Collectors.groupingBy(DockerTestStep::getTitle));
 		List<String> sortedKeys = testStepsGroupedByFunctionNameWithType.keySet().stream().sorted().toList();
