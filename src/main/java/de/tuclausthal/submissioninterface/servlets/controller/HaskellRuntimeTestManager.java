@@ -355,6 +355,17 @@ public class HaskellRuntimeTestManager extends HttpServlet {
 			String functionConcreteType = functionIdentifier.getFunctionConcreteType();
 			List<String> functionParameterTypes = getFunctionParameterTypes(functionConcreteType);
 
+			if (functionParameterTypes.isEmpty()) {
+				List<String> functionCalls = List.of(functionName);
+				List<String> expectedValues = computeExpectedValues(functionCalls, haskellRuntimeTest.getTask());
+
+				if (expectedValues.size() == 1) {
+					String expectedValue = expectedValues.get(0);
+					generatedTestcases.add(new DockerTestStepData(functionName, functionType, functionName, expectedValue, getModelSolutionFilename(haskellRuntimeTest)));
+				}
+				return generatedTestcases;
+			}
+
 			List<TestcaseWithTypes> testcases = generateQuickcheckFunctionTestcases(haskellRuntimeTest.getTask(), functionParameterTypes, arbitraryInstances, numberOfTestSteps);
 
 			List<String> functionCalls = generateFunctionCalls(functionName, testcases);
