@@ -182,9 +182,10 @@ public class CommonErrorAnalyzer {
 				if (!steps.getJsonObject(i).getBoolean("ok")) {
 					String gotValue = steps.getJsonObject(i).getString("got").strip();
 
-					if (gotValue.startsWith("EXCEPTION")) {
+					if (gotValue.contains("EXCEPTION")) {
 						// remove line numbers from exceptions, since differences in line numbers should not be considered for clustering
-						gotValue = gotValue.replaceAll("\\b\\d+\\b", "-");
+						// gotValue = gotValue.replaceAll("\\b\\d+\\b", "-");
+						gotValue = gotValue.replaceAll("[^\\p{L} ]", "");
 					}
 
 					String testCodeWrappedInCatchAndTimeout = test.getTestSteps().get(i).getTestcode();
